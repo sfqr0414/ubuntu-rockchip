@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  REPO_OWNER: xiaoyi1972
-  REPO_NAME: ubuntu-rockchip
+  REPO_OWNER: ${{ github.repository_owner }}
+  REPO_NAME: ${{ github.event.repository.name }}
   RELEASE_TAG: workflow
   ROOTFS_FILE_PREFIX: ubuntu
   ROOTFS_ARCH: arm64
