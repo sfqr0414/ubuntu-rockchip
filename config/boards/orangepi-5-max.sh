@@ -43,7 +43,21 @@ function config_image_hook__orangepi-5-max() {
         # Install wiring orangepi package 
         chroot "${rootfs}" apt-get -y install wiringpi-opi libwiringpi2-opi libwiringpi-opi-dev
         echo "BOARD=orangepi5max" > "${rootfs}/etc/orangepi-release"
+    else
+        (
+         DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
+         DOWNLOAD_FILES=("armbian-firmware-gpu-panthor.deb" \
+                         "armbian-firmware-wifi-ap6275p.deb")
+         for file in "${DOWNLOAD_FILES[@]}"; do
+             wget -q -L -T 300 -O "$file" "${DOWNLOAD_URL}/$file" || {
+                 echo "下载失败：$file" >&2
+                 exit 1
+             }
+             [[ -s "$file" ]] || { echo "下载失败：$file 文件为空" >&2; exit 1; }
+             echo "下载成功：$file"
+             chroot "${rootfs}" apt install -y "$file"
+         done
+         )
     fi
-
     return 0
 }
