@@ -47,7 +47,8 @@ function config_image_hook__orangepi-5-max() {
     (
     DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
     DOWNLOAD_FILES=(#"armbian-firmware-gpu-panthor.deb" \
-                    "armbian-firmware-wifi-ap6275p.deb")
+                    "armbian-firmware-wifi-ap6275p.deb" \
+                    "bcmdhd-sdio-dkms_101.10.591.52.27-6_all.deb")
 
     # Ensure /tmp exists inside the rootfs so chroot can access downloaded packages.
     mkdir -p "${rootfs}/tmp"
