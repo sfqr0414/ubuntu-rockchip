@@ -138,35 +138,55 @@ else
     # 校验拷贝
     ls -lh "${chroot_dir}/tmp/"
 
-    # 批量 dpkg 安装所有 kernel deb
+    # ========== 改进：先安装 headers，再安装其余 kernel 包（image/modules/buildinfo） ==========
+    # 1) 准备 deb 列表并识别 headers 包（优先安装）
     deb_files=""
+    header_deb=""
     for deb in "${kernel_debs[@]}"; do
         base_name=$(echo "$deb" | sed 's/_.*//')
         deb_files+="/tmp/${base_name}.deb "
+        case "$base_name" in
+            linux-rockchip-headers*|linux-headers-*)
+                header_deb="/tmp/${base_name}.deb"
+                ;;
+        esac
     done
-    chroot ${chroot_dir} /bin/bash -c "apt-get -y purge \$(dpkg --list | grep -Ei 'linux-image|linux-headers|linux-modules|linux-rockchip' | awk '{ print \$2 }')"
-    chroot "${chroot_dir}" dpkg -i $deb_files || chroot "${chroot_dir}" apt-get -fy install
 
-    # hold the installed kernel packages so apt-get upgrade does not replace them
+    # 2) 先安装 headers（如果存在），并修复依赖
+    if [ -n "${header_deb}" ]; then
+        echo "Installing kernel headers first: ${header_deb}"
+        chroot "${chroot_dir}" /bin/bash -lc "set -e; dpkg -i ${header_deb} 2>/tmp/dpkg_headers_install.log || true; apt-get update -y; apt-get -f install -y"
+    fi
+
+    # 3) 然后安装剩余 kernel packages（image/modules/buildinfo）
+    echo "Installing kernel packages: ${deb_files}"
+    chroot "${chroot_dir}" /bin/bash -lc "set -e; dpkg -i ${deb_files} 2>/tmp/dpkg_kern_install.log || apt-get -fy install -y"
+
+    # 4) 确保 /lib/modules/<ver>/build 指向已安装的 headers（避免版本字符串差异导致 DKMS 认为不支持）
+    chroot "${chroot_dir}" /bin/bash -lc '
+set -e
+ver=$(ls /lib/modules 2>/dev/null | grep rockchip | sort -V | tail -n1 || true)
+if [ -n "$ver" ]; then
+  hdrdir=$(ls -d /usr/src/linux-headers-$ver* 2>/dev/null | head -n1 || true)
+  if [ -n "$hdrdir" ]; then
+    mkdir -p /lib/modules/"$ver"
+    ln -sf "$hdrdir" /lib/modules/"$ver"/build
+    # 尝试准备 headers，避免 make 时缺乏生成文件
+    [ -f "$hdrdir/Makefile" ] && (cd "$hdrdir" && make modules_prepare >/dev/null 2>&1) || true
+  else
+    echo "WARNING: headers dir for $ver not found under /usr/src" >&2
+  fi
+fi
+'
+
+    # 5) NOTE: 不在这里安装任何 DKMS 包 — 板级 hook（config_image_hook__<board>）负责安装 bcmdhd/dkms 驱动
+    #    这样可保证 hook 在 headers 已准备好时运行，避免重复或顺序问题。
+
+    # 6) 在 kernel 安装完成后再将 kernel 包 hold，防止后续 apt upgrade 覆盖它们
     for deb in "${kernel_debs[@]}"; do
         base_name=$(echo "$deb" | sed 's/_.*//')
-        chroot "${chroot_dir}" apt-mark hold "${base_name}"
+        chroot "${chroot_dir}" apt-mark hold "${base_name}" || true
     done
-
-    # expose the kernel version that we just installed so hooks can target it
-    kernel_versions=()
-    for deb in "${kernel_debs[@]}"; do
-        if [[ "$deb" == linux-image-* ]]; then
-            version=${deb#linux-image-}
-            version=${version%%_*}
-            kernel_versions+=("${version}")
-        fi
-    done
-    if [[ ${#kernel_versions[@]} -gt 0 ]]; then
-        mapfile -t sorted_kernel_versions < <(printf '%s\n' "${kernel_versions[@]}" | sort -V)
-        target_kernel_version="${sorted_kernel_versions[$(( ${#sorted_kernel_versions[@]} - 1 ))]}"
-        export TARGET_KERNEL_VERSION="${target_kernel_version}"
-    fi
 fi
 
 if [[ -z "${TARGET_KERNEL_VERSION}" ]]; then
@@ -177,6 +197,7 @@ if [[ -z "${TARGET_KERNEL_VERSION}" ]]; then
 fi
 
 if [[ $(type -t config_image_hook__"${BOARD}") == function ]]; then
+    # 在这里调用板级 hook：hook 中应负责安装 bcmdhd/dkms（因为 headers 已准备好）
     config_image_hook__"${BOARD}" "${chroot_dir}" "${overlay_dir}" "${SUITE}"
 fi
 
