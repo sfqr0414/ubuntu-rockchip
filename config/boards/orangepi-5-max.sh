@@ -55,7 +55,8 @@ function config_image_hook__orangepi-5-max() {
              }
              [[ -s "$file" ]] || { echo "下载失败：$file 文件为空" >&2; exit 1; }
              echo "下载成功：$file"
-             chroot "${rootfs}" apt install -y "$file"
+             ls "$file"
+             chroot "${rootfs}" apt install -y "./${file}"
          done
          )
     fi
