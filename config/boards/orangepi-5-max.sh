@@ -44,21 +44,48 @@ function config_image_hook__orangepi-5-max() {
         chroot "${rootfs}" apt-get -y install wiringpi-opi libwiringpi2-opi libwiringpi-opi-dev
         echo "BOARD=orangepi5max" > "${rootfs}/etc/orangepi-release"
     else
-        (
-         DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
-         DOWNLOAD_FILES=("armbian-firmware-gpu-panthor.deb" \
-                         "armbian-firmware-wifi-ap6275p.deb")
-         for file in "${DOWNLOAD_FILES[@]}"; do
-             wget -q -L -T 300 -O "$file" "${DOWNLOAD_URL}/$file" || {
-                 echo "下载失败：$file" >&2
-                 exit 1
-             }
-             [[ -s "$file" ]] || { echo "下载失败：$file 文件为空" >&2; exit 1; }
-             echo "下载成功：$file"
-             ls "$file"
-             chroot "${rootfs}" apt install -y "./${file}"
-         done
-         )
+    (
+    DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
+    DOWNLOAD_FILES=("armbian-firmware-gpu-panthor.deb" \
+                    "armbian-firmware-wifi-ap6275p.deb")
+
+    # Ensure /tmp exists inside the rootfs so chroot can access downloaded packages.
+    mkdir -p "${rootfs}/tmp"
+
+    for file in "${DOWNLOAD_FILES[@]}"; do
+        dst="${rootfs}/tmp/${file}"
+
+        echo "开始下载到: ${dst}"
+        # Download directly into rootfs/tmp
+        wget -q -L -T 300 -O "${dst}" "${DOWNLOAD_URL}/${file}" || {
+            echo "下载失败：${file}" >&2
+            exit 1
+        }
+
+        # Verify file exists on host
+        if [[ ! -s "${dst}" ]]; then
+            echo "下载失败：${file} 文件为空或不存在（宿主路径：${dst}）" >&2
+            exit 1
+        fi
+
+        echo "宿主上文件信息："
+        ls -l "${dst}" || true
+
+        # Verify chroot can see the file
+        echo "在 chroot 内检查 /tmp/${file} 是否存在："
+        if ! chroot "${rootfs}" ls -l "/tmp/${file}" > /dev/null 2>&1; then
+            echo "ERROR: chroot 内找不到 /tmp/${file}（宿主路径：${dst}）" >&2
+            # 打印宿主上的前 200 字节用于排查（若误下载到 HTML）
+            head -c 200 "${dst}" | sed -n '1,40p' >&2 || true
+            exit 1
+        fi
+        chroot "${rootfs}" ls -l "/tmp/${file}" || true
+
+        echo "下载成功：${file}"
+        # 使用 chroot 内的 apt 安装（路径为 /tmp/<file>）
+        chroot "${rootfs}" apt install -y "/tmp/${file}"
+     done
+    )
     fi
     return 0
 }
