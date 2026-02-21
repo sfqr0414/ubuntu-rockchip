@@ -162,16 +162,26 @@ else
     echo "Installing kernel packages: ${deb_files}"
     chroot "${chroot_dir}" /bin/bash -lc "set -e; dpkg -i ${deb_files} 2>/tmp/dpkg_kern_install.log || apt-get -fy install -y"
 
-    # 4) 确保 /lib/modules/<ver>/build 指向已安装的 headers（避免版本字符串差异导致 DKMS 认为不支持）
+    # 4) 更强健地查找 headers 目录并建立必要的软链接（覆盖命名差异）
     chroot "${chroot_dir}" /bin/bash -lc '
 set -e
 ver=$(ls /lib/modules 2>/dev/null | grep rockchip | sort -V | tail -n1 || true)
 if [ -n "$ver" ]; then
-  hdrdir=$(ls -d /usr/src/linux-headers-$ver* 2>/dev/null | head -n1 || true)
+  # try matching various possible header directory name patterns under /usr/src
+  hdrdir=""
+  hdrdir=$(ls -d /usr/src/*"$ver"* 2>/dev/null | head -n1 || true)
+  if [ -z "$hdrdir" ]; then
+    # try matching by short version (strip trailing -rockchip)
+    short=$(echo "$ver" | sed "s/-[^-]*$//")
+    hdrdir=$(ls -d /usr/src/*"$short"* 2>/dev/null | head -n1 || true)
+  fi
   if [ -n "$hdrdir" ]; then
     mkdir -p /lib/modules/"$ver"
     ln -sf "$hdrdir" /lib/modules/"$ver"/build
-    # 尝试准备 headers，避免 make 时缺乏生成文件
+    # create common expected /usr/src symlink names to satisfy DKMS expectations
+    ln -sf "$hdrdir" /usr/src/linux-headers-"$ver" 2>/dev/null || true
+    ln -sf "$hdrdir" /usr/src/linux-rockchip-headers-"$(echo "$ver" | sed "s/-[^-]*$//")" 2>/dev/null || true
+    # prepare headers to ensure generated files exist
     [ -f "$hdrdir/Makefile" ] && (cd "$hdrdir" && make modules_prepare >/dev/null 2>&1) || true
   else
     echo "WARNING: headers dir for $ver not found under /usr/src" >&2
@@ -179,10 +189,10 @@ if [ -n "$ver" ]; then
 fi
 '
 
-    # 5) NOTE: 不在这里安装任何 DKMS 包 — 板级 hook（config_image_hook__<board>）负责安装 bcmdhd/dkms 驱动
+    # 5) NOTE: 不在这里主动安装 DKMS 包 — 板级 hook（config_image_hook__<board>）负责安装 bcmdhd/dkms 驱动
     #    这样可保证 hook 在 headers 已准备好时运行，避免重复或顺序问题。
 
-    # 6) 在 kernel 安装完成后再将 kernel 包 hold，防止后续 apt upgrade 覆盖它们
+    # 6) 最后把 kernel 包 hold，防止后续 apt upgrade 覆盖它们
     for deb in "${kernel_debs[@]}"; do
         base_name=$(echo "$deb" | sed 's/_.*//')
         chroot "${chroot_dir}" apt-mark hold "${base_name}" || true
