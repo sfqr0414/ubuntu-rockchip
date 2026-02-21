@@ -32,7 +32,7 @@ function config_image_hook__orangepi-5-max() {
         # Install the rockchip camera engine
         chroot "${rootfs}" apt-get -y install camera-engine-rkaiq-rk3588
 
-        # Install BCMDHD SDIO WiFi and Bluetooth DKMS
+        # Install BCMDHD SDIO WiFi and Bluetooth DKMS (do not print make.log here)
         chroot "${rootfs}" apt-get -y install dkms bcmdhd-sdio-dkms
 
         # Enable bluetooth
@@ -85,7 +85,18 @@ function config_image_hook__orangepi-5-max() {
         echo "下载成功：${file}"
         # 使用 chroot 内的 apt 安装（路径为 /tmp/<file>）
         chroot "${rootfs}" apt install -y "/tmp/${file}"
-     done
+    done
+
+    # After installing downloaded packages (including bcmdhd .deb), print the full DKMS make.log(s)
+    # Print entire file(s) (no tail) as requested
+    chroot "${rootfs}" /bin/bash -lc '
+for log in /var/lib/dkms/bcmdhd-sdio/*/build/make.log; do
+  [ -f "$log" ] || continue
+  echo "===== DKMS make.log: $log ====="
+  cat "$log" || true
+done
+' || true
+
     )
     fi
     return 0
