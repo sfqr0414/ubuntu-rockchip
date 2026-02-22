@@ -9,7 +9,6 @@ export UBOOT_RULES_TARGET="orangepi-5-max-rk3588"
 #export COMPATIBLE_SUITES=("jammy" "noble" "oracular" "plucky")
 export COMPATIBLE_SUITES=("plucky")
 #export COMPATIBLE_FLAVORS=("server" "desktop")
-export COMPATIBLE_FLAVORS=("desktop")
 
 function config_image_hook__orangepi-5-max() {
     local rootfs="$1"
