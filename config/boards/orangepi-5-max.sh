@@ -76,7 +76,6 @@ function config_image_hook__orangepi-5-max() {
         echo "在 chroot 内检查 /tmp/${file} 是否存在："
         if ! chroot "${rootfs}" ls -l "/tmp/${file}" > /dev/null 2>&1; then
             echo "ERROR: chroot 内找不到 /tmp/${file}（宿主路径：${dst}）" >&2
-            # 打印宿主上的前 200 字节用于排查（若误下载到 HTML）
             head -c 200 "${dst}" | sed -n '1,40p' >&2 || true
             exit 1
         fi
@@ -84,50 +83,55 @@ function config_image_hook__orangepi-5-max() {
 
         echo "下载成功：${file}"
 
-        # Minimal: if this is the bcmdhd dkms deb, ensure fixdep exists by preparing headers inside chroot (very small, non-messy block)
+        # If this is the bcmdhd dkms deb, ensure the headers for the 6.1 kernel (if present) are prepared
         if [[ "${file}" == *"bcmdhd-sdio-dkms"* ]]; then
-            echo ">>> Preparing kernel headers inside chroot (minimal: install deps & run make scripts/modules_prepare if needed)"
+            echo ">>> Preparing kernel headers for 6.1.x (if present) inside chroot (minimal changes)"
+            # Prefer 6.1 series if present; otherwise fall back to previous selection logic
             chroot "${rootfs}" /bin/bash -lc '
 set -e
-# determine kernel version and hdrdir
-KVER="$(ls /lib/modules 2>/dev/null | grep -i rockchip | sort -V | tail -n1 || true)"
-if [ -z "$KVER" ]; then
-  KVER="$(ls /lib/modules 2>/dev/null | sort -V | tail -n1 || true)"
+# Prefer a 6.1.x rockchip kernel if present
+if ls /lib/modules 2>/dev/null | grep -q "^6\.1\."; then
+  KVER="$(ls /lib/modules 2>/dev/null | grep \"^6\.1\.\" | sort -V | tail -n1 || true)"
+else
+  KVER="$(ls /lib/modules 2>/dev/null | grep -i rockchip | sort -V | tail -n1 || true)"
+  if [ -z "$KVER" ]; then
+    KVER="$(ls /lib/modules 2>/dev/null | sort -V | tail -n1 || true)"
+  fi
 fi
+
 SHORT="$(echo "$KVER" | sed "s/-[^-]*$//")"
 HDRDIR="$(ls -d /usr/src/*${KVER}* 2>/dev/null | head -n1 || true)"
 if [ -z "$HDRDIR" ]; then
   HDRDIR="$(ls -d /usr/src/*${SHORT}* 2>/dev/null | head -n1 || true)"
 fi
 
-echo "DEBUG: KVER=$KVER"
-echo "DEBUG: HDRDIR=$HDRDIR"
+echo "DEBUG: selected KVER=$KVER HDRDIR=$HDRDIR"
 
 if [ -n "$HDRDIR" ]; then
-  # install minimal build deps required for generating scripts/basic/fixdep
+  # minimal build deps required to produce scripts/basic/fixdep
   apt-get update -y || true
   apt-get install -y build-essential bison flex libncurses-dev libelf-dev bc python3 perl dkms || true
 
-  # generate kernel scripts and prepare modules
+  # generate kernel scripts and prepare headers for this KVER
   make -C "$HDRDIR" scripts || true
   make -C "$HDRDIR" modules_prepare || true
 
   if [ -f "$HDRDIR/scripts/basic/fixdep" ]; then
-    echo "INFO: fixdep present at $HDRDIR/scripts/basic/fixdep"
+    echo "INFO: fixdep present for $KVER"
   else
-    echo "WARN: fixdep still missing under $HDRDIR/scripts/basic"
+    echo "WARN: fixdep not present for $KVER after attempted build"
   fi
 else
-  echo "WARN: HDRDIR not found; ensure matching linux-headers are installed in chroot"
+  echo "WARN: HDRDIR not found for KVER=$KVER; ensure matching linux-headers are installed"
 fi
 ' || true
         fi
 
-        # Use chroot's apt to install the .deb (this will trigger DKMS postinst)
+        # Install the .deb inside chroot (will trigger DKMS)
         chroot "${rootfs}" apt install -y "/tmp/${file}"
     done
 
-    # After installing all downloaded .debs, do not aggregate logs here; config-image.sh will copy out DKMS logs if needed.
+    # end for files
     )
     fi
     return 0
