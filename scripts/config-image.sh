@@ -111,7 +111,7 @@ type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
 #configure_apt_sources "$chroot_dir" "${SUITE}"
 
 chroot $chroot_dir apt-get update
-chroot $chroot_dir apt-get -y upgrade
+#chroot $chroot_dir apt-get -y upgrade
 
 if [[ ${LAUNCHPAD} == "Y" ]]; then
     chroot ${chroot_dir} apt-get -y install "u-boot-${BOARD}"
