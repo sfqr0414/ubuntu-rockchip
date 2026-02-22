@@ -162,18 +162,18 @@ else
     echo "Installing kernel packages: ${deb_files}"
     chroot "${chroot_dir}" /bin/bash -lc "set -e; dpkg -i ${deb_files} 2>/tmp/dpkg_kern_install.log || apt-get -fy install -y"
 
-    # 4) 更保守地准备 headers：不要运行 make scripts（会触发 selinux host 工具编译）。
-    #    只建立 /lib/modules/<ver>/build -> hdrdir，并运行 make modules_prepare。
+    # 4) 更保守地准备 headers：安装必需工具（flex/bison 等），只运行 make modules_prepare（避免 make scripts）
     chroot "${chroot_dir}" /bin/bash -lc '
 set -e
-# 找到一个合适的 headers 目录（优先 6.1.x）
+
+# 找到合适的 headers 目录（优先 6.1.x）
 HDRDIR="$(ls -d /usr/src/linux-headers-6.1.* 2>/dev/null | head -n1 || true)"
 if [ -z "$HDRDIR" ]; then
   HDRDIR="$(ls -d /usr/src/linux-headers-* 2>/dev/null | head -n1 || true)"
 fi
 
 if [ -z "$HDRDIR" ]; then
-  echo "WARN: HDRDIR not found; ensure linux-headers package is installed" >&2
+  echo "WARN: HDRDIR not found; ensure matching linux-headers package is installed" >&2
   exit 0
 fi
 
@@ -183,23 +183,41 @@ mkdir -p "/lib/modules/$ver"
 ln -sf "$HDRDIR" "/lib/modules/$ver/build"
 echo "INFO: linked /lib/modules/$ver/build -> $HDRDIR"
 
-# 安装最小构建依赖以确保 modules_prepare 有可用工具（避免完整编译 scripts）
+# 安装严格需要的构建工具（确保 flex/bison 在先）
 apt-get update -y || true
-apt-get install -y build-essential make bc dkms libncurses-dev libelf-dev perl python3 || true
+apt-get install -y --no-install-recommends \
+  build-essential make bc dkms libncurses-dev libelf-dev perl python3 \
+  flex bison || true
 
-# 仅运行 modules_prepare，避免 make scripts 导致大量 host 工具/selinux 编译错误
+# sanity: ensure flex and bison are available
+if ! command -v flex >/dev/null 2>&1; then
+  echo "ERROR: flex not found after install" >&2
+  exit 1
+fi
+if ! command -v bison >/dev/null 2>&1; then
+  echo "ERROR: bison not found after install" >&2
+  exit 1
+fi
+
+# 仅运行 modules_prepare（避免运行 make scripts 导致 SELinux/genheaders 等 host 工具完整编译）
 if [ -f "$HDRDIR/Makefile" ]; then
   echo "INFO: running make modules_prepare in $HDRDIR"
-  (cd "$HDRDIR" && make modules_prepare) || true
+  (cd "$HDRDIR" && make modules_prepare) || {
+    echo "ERROR: make modules_prepare failed in $HDRDIR" >&2
+    tail -n 100 "$HDRDIR"/scripts/* 2>/dev/null || true
+    exit 1
+  }
 else
   echo "WARN: $HDRDIR/Makefile not found"
 fi
 
-# 简单验证关键生成文件是否存在
+# 验证关键生成文件是否存在
 if [ -f "$HDRDIR/include/generated/utsrelease.h" ] || [ -f "/lib/modules/$ver/build/Makefile" ]; then
   echo "INFO: headers appear prepared for $ver"
 else
-  echo "WARN: headers may be incomplete for $ver"
+  echo "WARN: headers may be incomplete for $ver" >&2
+  ls -la "$HDRDIR" || true
+  ls -la "/lib/modules/$ver" || true
 fi
 '
 
