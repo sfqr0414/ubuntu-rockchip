@@ -327,8 +327,6 @@ build_image() {
     # 8. 构建镜像
     echo -e "\n===== 构建镜像：${board}-${suite}-${flavor} ====="
     cd "${WORKSPACE}"
-    #sudo stdbuf -oL -eL bash -x ./build.sh --board="${board}" --suite="${suite}" --flavor="${flavor}" 2>&1 | tee "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
-    #sudo stdbuf -oL -eL bash -x ./build.sh --board="${board}" --suite="${suite}" --flavor="${flavor}" 2>&1 | tee "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
     sudo script -eqc "bash -x ./build.sh --board='${board}' --suite='${suite}' --flavor='${flavor}'" /dev/null 2>&1 | tee "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
     #sudo script -qc "bash -x ./build.sh --board=${board} --suite=${suite} --flavor=${flavor}" "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
     # 9. 打包DEB包（仅当本地/远程都无有效DEB包时）
