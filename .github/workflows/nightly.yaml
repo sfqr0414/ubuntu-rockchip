@@ -147,7 +147,7 @@ jobs:
         if: steps.check_remote_rootfs.outputs.remote_exists == 'false'
         shell: bash
         run: |
-          sudo apt-mark hold firefox firefox-locale-*
+          dpkg -l | grep -q firefox && sudo apt-mark hold firefox
           sudo snap refresh --hold=forever core22 bare gtk-common-themes
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y --no-install-recommends \
@@ -356,7 +356,7 @@ jobs:
       - name: Install full build dependencies
         shell: bash
         run: |
-          sudo apt-mark hold firefox firefox-locale-*
+          dpkg -l | grep -q firefox && sudo apt-mark hold firefox
           sudo snap refresh --hold=forever core22 bare gtk-common-themes
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y --no-install-recommends \
