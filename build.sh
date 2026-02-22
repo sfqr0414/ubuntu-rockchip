@@ -1,7 +1,8 @@
 #!/bin/bash
 
-set -eE 
-trap 'echo Error: in $0 on line $LINENO' ERR
+#set -eE 
+#trap 'echo Error: in $0 on line $LINENO' ERR
+#exec 2> /dev/tty
 
 cd "$(dirname -- "$(readlink -f -- "$0")")"
 
@@ -12,6 +13,18 @@ $c =~ s/\n[ \t]*\n+/\n/g; print "$c\n" }' "$@"
 }
 
 export -f extract_body
+
+info() {
+    printf '\033[1;32m[INFO]\033[0m %s\n' "$*"
+}
+warn() {
+    printf '\033[1;33m[WARN]\033[0m %s\n' "$*"
+}
+error() {
+    printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2
+}
+
+export -f info warn error
 
 usage() {
 cat << HEREDOC
@@ -175,7 +188,27 @@ if [ "${CLEAN}" == "Y" ]; then
     rm -rf build
 fi
 
-mkdir -p build/logs && exec > >(tee "build/logs/build-$(date +"%Y%m%d%H%M%S").log") 2>&1
+
+mkdir -p build/logs
+LOG_DIR="build/logs"
+LOG_FILE="$LOG_DIR/build-$(date +"%Y%m%d%H%M%S").log"
+
+# 检查环境变量。如果没有这个变量，说明这是第一次启动，需要开启记录
+if [[ -z "${INSIDE_SCRIPT:-}" && -z "${SCRIPT:-}" ]]; then
+    # 只有在完全没有录制环境时，才开启内部录制
+    mkdir -p "$LOG_DIR"
+    export INSIDE_SCRIPT=1
+    
+    # 用 -q 配合简单的重定向，避开那两行讨厌的 Header
+    # 既然 -q 在你的环境下日志里还有，那我们直接不让 script 写文件，我们自己用 tee 拿
+    exec script -qec "$0 $*" /dev/null | stdbuf -oL tee -a "$LOG_FILE"
+    exit $?
+fi
+
+#mkdir -p build/logs && exec > >(tee "build/logs/build-$(date +"%Y%m%d%H%M%S").log") 2>&1
+
+#bash -x ./scripts/config-image.sh
+#exit 0
 
 if [ "${KERNEL_ONLY}" == "Y" ]; then
     if [ -z "${SUITE}" ]; then

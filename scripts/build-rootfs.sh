@@ -9,16 +9,10 @@ trap '
         echo "❌ Host script exited abnormally"
     fi
     exit $exit_code  # exit with original code
-' EXIT
+ ' EXIT
 
 # Capture INT/TERM/QUIT and force exit
-trap 'echo "❌ Host script was forcibly terminated"; exit 1' INT TERM QUIT
-
-extract_body() {
-    perl -0777 -ne 'while (/\b(?:function\s+)?([A-Za-z_]\w*)\s*\(\s*\)\s*(\{(?:[^{}]++|(?2))*\})/g) { my $c = substr($2,1,-1); $c =~ s/^[ \t\r\n]+//; $c =~ s/[ \t\r\n]+$//; # remove semicolons before [...]
-$c =~ s/;[ \t]*(?=\n)//g; $c =~ s/;[ \t]*\z//; # collapse multiple blank lines
-$c =~ s/\n[ \t]*\n+/\n/g; print "$c\n" }' "$@"
-}
+# trap 'echo "❌ Host script was forcibly terminated"; exit 1' INT TERM QUIT
 
 # Basic configuration (YAML filename from FLAVOR)
 HOST_ROOTFS_ROOT=$(cd $(dirname $0)/.. && pwd -P)

@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-trap 'echo "Error at line $LINENO: $BASH_COMMAND"' ERR
+#trap 'echo "Error at line $LINENO: $BASH_COMMAND"' ERR
 
 # ========================= 全局配置（可根据本地环境修改）=========================
 export REPO_OWNER="sfqr0414"
@@ -327,8 +327,10 @@ build_image() {
     # 8. 构建镜像
     echo -e "\n===== 构建镜像：${board}-${suite}-${flavor} ====="
     cd "${WORKSPACE}"
-    sudo bash ./build.sh --board="${board}" --suite="${suite}" --flavor="${flavor}" 2>&1 | tee "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
-
+    #sudo stdbuf -oL -eL bash -x ./build.sh --board="${board}" --suite="${suite}" --flavor="${flavor}" 2>&1 | tee "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
+    #sudo stdbuf -oL -eL bash -x ./build.sh --board="${board}" --suite="${suite}" --flavor="${flavor}" 2>&1 | tee "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
+    sudo script -eqc "bash -x ./build.sh --board='${board}' --suite='${suite}' --flavor='${flavor}'" /dev/null 2>&1 | tee "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
+    #sudo script -qc "bash -x ./build.sh --board=${board} --suite=${suite} --flavor=${flavor}" "${LOGS_DIR}/image-build-${board}-${suite}-${flavor}.log"
     # 9. 打包DEB包（仅当本地/远程都无有效DEB包时）
     if [ "${local_deb_zip_exists}" != "true" ] && [ "${deb_remote_exists}" = "false" ]; then
         echo -e "\n===== 打包DEB包（本地留存） ====="

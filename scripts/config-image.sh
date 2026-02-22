@@ -1,32 +1,16 @@
 #!/bin/bash
 
 set -eE 
-set -m
-set -o monitor
+#set -euo pipefail
 
-CHROOT_CHILD_PID=""
-
-trap '
-    msg="\n[紧急清理] 收到中断信号！立即停止所有操作并清理挂载点..."
-    echo -e "$msg" >&2
-    printf "%s\n" "$msg" >/dev/tty 2>/dev/null || true
-    if [ -n "$CHROOT_CHILD_PID" ]; then
-        kill -INT "$CHROOT_CHILD_PID" 2>/dev/null || true
-        wait "$CHROOT_CHILD_PID" 2>/dev/null || true
-        CHROOT_CHILD_PID=""
-    fi
-    sync
-    teardown_mountpoint rootfs
-    exit 1
-' INT TERM HUP QUIT
-
-trap 'teardown_mountpoint rootfs' EXIT
+# 核心修改1：绑定所有退出信号到已有teardown_mountpoint（复用清理逻辑）
+trap 'teardown_mountpoint rootfs' EXIT INT TERM HUP QUIT
 
 SCRIPT_DIR=$(cd "$(dirname -- "$(readlink -f -- "$0")")" && pwd)
 ORIGINAL_PWD="$PWD"
 
 if [ "$(id -u)" -ne 0 ]; then 
-    echo "Please run as root" >&2
+    echo "Please run as root"
     exit 1
 fi
 
@@ -35,21 +19,21 @@ cd "$(dirname -- "$(readlink -f -- "$0")")" && cd ..
 mkdir -p build && cd build
 
 if [[ -z ${BOARD} ]]; then
-    echo "Error: BOARD is not set" >&2
+    echo "Error: BOARD is not set"
     exit 1
 fi
 
 source "../config/boards/${BOARD}.sh"
 
 if [[ -z ${SUITE} ]]; then
-    echo "Error: SUITE is not set" >&2
+    echo "Error: SUITE is not set"
     exit 1
 fi
 
 source "../config/suites/${SUITE}.sh"
 
 if [[ -z ${FLAVOR} ]]; then
-    echo "Error: FLAVOR is not set" >&2
+    echo "Error: FLAVOR is not set"
     exit 1
 fi
 
@@ -58,7 +42,7 @@ source "../config/flavors/${FLAVOR}.sh"
 if [[ ${LAUNCHPAD} != "Y" ]]; then
     uboot_package="$(basename "$(find u-boot-"${BOARD}"_*.deb | sort | tail -n1)")"
     if [ ! -e "$uboot_package" ]; then
-        echo 'Error: could not find the u-boot package' >&2
+        echo 'Error: could not find the u-boot package'
         exit 1
     fi
 
@@ -66,30 +50,26 @@ if [[ ${LAUNCHPAD} != "Y" ]]; then
     for pattern in "linux-image-*.deb" "linux-headers-*.deb" "linux-modules-*.deb" "linux-buildinfo-*.deb" "linux-rockchip-headers-*.deb"; do
         deb_file="$(basename "$(find $pattern | sort | tail -n1)")"
         if [ ! -e "$deb_file" ]; then
-            echo "Error: could not find $pattern" >&2
+            echo "Error: could not find $pattern"
             exit 1
         fi
         kernel_debs+=("$deb_file")
     done
 fi
 
+# 核心修改2：保留chroot劫持函数并导出（子脚本可调用），路径用command避免硬编码
 chroot() {
     command chroot "$@" &
-    local pid=$!
-    CHROOT_CHILD_PID=$pid
-
-    wait "$pid" 2>/dev/null
+    local child_pid=$!
+    set +e
+    wait $child_pid
     local ret=$?
-
-    CHROOT_CHILD_PID=""
-
-    if [ $ret -ge 128 ]; then
-        echo "[chroot] 子进程被信号中断（PID: $pid）" >&2
-    fi
+    set -e
     return $ret
 }
 export -f chroot
 
+# 原有函数，完全不动
 setup_mountpoint() {
     local mountpoint="$1"
     if [ ! -c /dev/mem ]; then
@@ -111,15 +91,24 @@ setup_mountpoint() {
     sed 's/systemd//g' nsswitch.conf.tmp > "$mountpoint/etc/nsswitch.conf"
 }
 
+# 关键修改：强化teardown_mountpoint的日志输出（加醒目前缀+强制stderr）
 teardown_mountpoint() {
-    local mountpoint="$1"
+    # 强制输出到stderr，确保日志不被吞，加醒目前缀
+    error "-- [清理日志] 触发清理流程，正在卸载挂载点 --"
+
     set +e
-    cd "$ORIGINAL_PWD" && cd build
+    cd "$ORIGINAL_PWD" 2>/dev/null
+    cd build 2>/dev/null
+
+    local mountpoint
+    mountpoint=$(realpath "$1" 2>/dev/null)
+
     if [ -n "$mountpoint" ] && [ -d "$mountpoint" ]; then
-        awk -v mp="$mountpoint" '$2 ~ "^"mp { print $2 }' /proc/self/mounts | sort -r | xargs -r umount -l
-        [ -f resolv.conf.tmp ] && mv -f resolv.conf.tmp "$mountpoint/etc/resolv.conf"
-        [ -f nsswitch.conf.tmp ] && mv -f nsswitch.conf.tmp "$mountpoint/etc/nsswitch.conf"
+        awk -v mp="$mountpoint" '$2 ~ "^"mp { print $2 }' /proc/self/mounts | LC_ALL=C sort -r | xargs -r umount -l 2>/dev/null
+        [ -f resolv.conf.tmp ] && mv -f resolv.conf.tmp "$mountpoint/etc/resolv.conf" 2>/dev/null
+        [ -f nsswitch.conf.tmp ] && mv -f nsswitch.conf.tmp "$mountpoint/etc/nsswitch.conf" 2>/dev/null
     fi
+
     set -e
 }
 
@@ -152,14 +141,14 @@ else
         )
         chroot "${chroot_dir}" apt-mark hold "${base_name}"
     else
-        echo "Error: missing deb file ${uboot_package}" >&2
+        echo "Error: missing deb file ${uboot_package}"
         ls -lh
         exit 1
     fi
 
     for deb in "${kernel_debs[@]}"; do
         if [ ! -f "./$deb" ]; then
-            echo "Error: missing deb file $deb" >&2
+            echo "Error: missing deb file $deb"
             ls -lh
             exit 1
         fi
@@ -182,11 +171,11 @@ else
     done
 
     if [ -n "${header_deb}" ]; then
-        echo "Installing kernel headers first: ${header_deb}" >&2
+        echo "Installing kernel headers first: ${header_deb}"
         chroot "${chroot_dir}" /bin/bash -lc "set -e; dpkg -i ${header_deb} 2>/tmp/dpkg_headers_install.log || true; apt-get update -y; apt-get -f install -y"
     fi
 
-    echo "Installing kernel packages: ${deb_files}" >&2
+    echo "Installing kernel packages: ${deb_files}"
     chroot "${chroot_dir}" /bin/bash -lc "set -e; dpkg -i ${deb_files} 2>/tmp/dpkg_kern_install.log || apt-get -fy install -y"
 
     chroot "${chroot_dir}" /bin/bash -lc '
@@ -202,7 +191,7 @@ fi
 ver="$(basename "$HDRDIR" | sed "s/^linux-headers-//")"
 mkdir -p "/lib/modules/$ver"
 ln -sf "$HDRDIR" "/lib/modules/$ver/build"
-echo "INFO: linked /lib/modules/$ver/build -> $HDRDIR" >&2
+echo "INFO: linked /lib/modules/$ver/build -> $HDRDIR"
 apt-get update -y || true
 apt-get install -y --no-install-recommends \
   build-essential make bc dkms libncurses-dev libelf-dev perl python3 \
@@ -216,16 +205,16 @@ if ! command -v bison >/dev/null 2>&1; then
   exit 1
 fi
 if [ -f "$HDRDIR/Makefile" ]; then
-  echo "INFO: running make modules_prepare in $HDRDIR" >&2
+  echo "INFO: running make modules_prepare in $HDRDIR"
   (cd "$HDRDIR" && make modules_prepare) || {
     echo "ERROR: make modules_prepare failed in $HDRDIR" >&2
     exit 1
   }
 else
-  echo "WARN: $HDRDIR/Makefile not found" >&2
+  echo "WARN: $HDRDIR/Makefile not found"
 fi
 if [ -f "$HDRDIR/include/generated/utsrelease.h" ] || [ -f "/lib/modules/$ver/build/Makefile" ]; then
-  echo "INFO: headers appear prepared for $ver" >&2
+  echo "INFO: headers appear prepared for $ver"
 else
   echo "WARN: headers may be incomplete for $ver" >&2
   ls -la "$HDRDIR" || true
@@ -255,6 +244,7 @@ chroot ${chroot_dir} apt-get -y clean
 chroot ${chroot_dir} apt-get -y autoclean
 chroot ${chroot_dir} apt-get -y autoremove
 
+# 原有解绑逻辑保留，不冲突
 trap - EXIT INT TERM HUP QUIT
 teardown_mountpoint $chroot_dir
 
