@@ -148,7 +148,9 @@ jobs:
         shell: bash
         run: |
           dpkg -l | grep -q firefox && sudo apt-mark hold firefox
-          sudo snap refresh --hold=forever core22 bare gtk-common-themes
+          for snap_pkg in core22 bare gtk-common-themes firefox; do
+            snap list | grep -q "^${snap_pkg}" && sudo snap refresh --hold=forever ${snap_pkg} || true
+          done
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y --no-install-recommends \
             build-essential gcc-aarch64-linux-gnu bison \
@@ -357,7 +359,9 @@ jobs:
         shell: bash
         run: |
           dpkg -l | grep -q firefox && sudo apt-mark hold firefox
-          sudo snap refresh --hold=forever core22 bare gtk-common-themes
+          for snap_pkg in core22 bare gtk-common-themes firefox; do
+            snap list | grep -q "^${snap_pkg}" && sudo snap refresh --hold=forever ${snap_pkg} || true
+          done
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y --no-install-recommends \
             build-essential device-tree-compiler u-boot-tools \
