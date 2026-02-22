@@ -3,7 +3,7 @@ set -euo pipefail
 trap 'echo "Error at line $LINENO: $BASH_COMMAND"' ERR
 
 # ========================= 全局配置（可根据本地环境修改）=========================
-export REPO_OWNER="xiaoyi1972"
+export REPO_OWNER="sfqr0414"
 export REPO_NAME=ubuntu-rockchip
 export RELEASE_TAG=workflow
 export ROOTFS_FILE_PREFIX=ubuntu
@@ -242,9 +242,13 @@ build_rootfs() {
     # 7. 缓存RootFS到cache目录
     echo -e "\n===== 缓存RootFS到本地 ====="
     sudo mkdir -p "${CACHE_DIR}/rootfs"
-    sudo cp "${rootfs_tar_path}" "${CACHE_DIR}/rootfs/"
-    sudo chmod 644 "${CACHE_DIR}/rootfs/${rootfs_tar_name}"
-    echo "RootFS缓存完成：${CACHE_DIR}/rootfs/${rootfs_tar_name}"
+    if [ -f "${CACHE_DIR}/rootfs/${rootfs_tar_name}" ]; then
+        echo "RootFS已在缓存目录，无需复制：${rootfs_tar_path}"
+    else   
+        sudo cp "${rootfs_tar_path}" "${CACHE_DIR}/rootfs/"
+        sudo chmod 644 "${CACHE_DIR}/rootfs/${rootfs_tar_name}"
+        echo "RootFS缓存完成：${CACHE_DIR}/rootfs/${rootfs_tar_name}"
+    fi
 }
 
 # ========================= 镜像构建函数（本地文件优先）=========================
