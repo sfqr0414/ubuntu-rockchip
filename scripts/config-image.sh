@@ -58,18 +58,22 @@ fi
 
 # Export chroot wrapper (avoids hardcoded path)
 chroot() {
-    command chroot "$@" & local child_pid=$!
-    set +e
-    wait $child_pid; local ret=$?
-    echo "Command 'chroot $@' exited with status $ret"
-    if [ $ret -ne 0 ]; then
-        if [ $ret -eq 130 ] || [ $ret -eq 143 ]; then
-            sudo kill -9 $child_pid 2>/dev/null
-            exit $ret
+    runner() {
+        command chroot "$@" & local child_pid=$!
+        set +e
+        wait $child_pid; local ret=$?
+        echo "Command 'chroot $@' exited with status $ret"
+        if [ $ret -ne 0 ]; then
+            if [ $ret -eq 130 ] || [ $ret -eq 143 ]; then
+                sudo kill -9 $child_pid 2>/dev/null
+                exit $ret
+            fi
         fi
-    fi
-    set -e
-    return $ret
+        set -e
+        return $ret
+    }
+    time runner "$@"
+    return $?
 }
 export -f chroot
 
