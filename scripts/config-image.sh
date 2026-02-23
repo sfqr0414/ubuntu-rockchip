@@ -1,10 +1,5 @@
 #!/bin/bash
-
 set -eE 
-#set -euo pipefail
-
-# 核心修改1：绑定所有退出信号到已有teardown_mountpoint（复用清理逻辑）
-trap 'teardown_mountpoint rootfs' EXIT INT TERM HUP QUIT
 
 SCRIPT_DIR=$(cd "$(dirname -- "$(readlink -f -- "$0")")" && pwd)
 ORIGINAL_PWD="$PWD"
@@ -23,6 +18,7 @@ if [[ -z ${BOARD} ]]; then
     exit 1
 fi
 
+# shellcheck source=/dev/null
 source "../config/boards/${BOARD}.sh"
 
 if [[ -z ${SUITE} ]]; then
@@ -30,6 +26,7 @@ if [[ -z ${SUITE} ]]; then
     exit 1
 fi
 
+# shellcheck source=/dev/null
 source "../config/suites/${SUITE}.sh"
 
 if [[ -z ${FLAVOR} ]]; then
@@ -37,6 +34,7 @@ if [[ -z ${FLAVOR} ]]; then
     exit 1
 fi
 
+# shellcheck source=/dev/null
 source "../config/flavors/${FLAVOR}.sh"
 
 if [[ ${LAUNCHPAD} != "Y" ]]; then
@@ -46,6 +44,7 @@ if [[ ${LAUNCHPAD} != "Y" ]]; then
         exit 1
     fi
 
+    # Find all kernel-related deb packages
     kernel_debs=()
     for pattern in "linux-image-*.deb" "linux-headers-*.deb" "linux-modules-*.deb" "linux-buildinfo-*.deb" "linux-rockchip-headers-*.deb"; do
         deb_file="$(basename "$(find $pattern | sort | tail -n1)")"
@@ -57,19 +56,23 @@ if [[ ${LAUNCHPAD} != "Y" ]]; then
     done
 fi
 
-# 核心修改2：保留chroot劫持函数并导出（子脚本可调用），路径用command避免硬编码
+# Export chroot wrapper (avoids hardcoded path)
 chroot() {
-    command chroot "$@" &
-    local child_pid=$!
+    command chroot "$@" & local child_pid=$!
     set +e
-    wait $child_pid
-    local ret=$?
+    wait $child_pid; local ret=$?
+    echo "Command 'chroot $@' exited with status $ret"
+    if [ $ret -ne 0 ]; then
+        if [ $ret -eq 130 ] || [ $ret -eq 143 ]; then
+            sudo kill -9 $child_pid 2>/dev/null
+            exit $ret
+        fi
+    fi
     set -e
     return $ret
 }
 export -f chroot
 
-# 原有函数，完全不动
 setup_mountpoint() {
     local mountpoint="$1"
     if [ ! -c /dev/mem ]; then
@@ -91,24 +94,18 @@ setup_mountpoint() {
     sed 's/systemd//g' nsswitch.conf.tmp > "$mountpoint/etc/nsswitch.conf"
 }
 
-# 关键修改：强化teardown_mountpoint的日志输出（加醒目前缀+强制stderr）
 teardown_mountpoint() {
-    # 强制输出到stderr，确保日志不被吞，加醒目前缀
-    error "-- [清理日志] 触发清理流程，正在卸载挂载点 --"
-
+    error "-- [cleanup] unmounting mountpoints --"
     set +e
     cd "$ORIGINAL_PWD" 2>/dev/null
     cd build 2>/dev/null
-
     local mountpoint
     mountpoint=$(realpath "$1" 2>/dev/null)
-
     if [ -n "$mountpoint" ] && [ -d "$mountpoint" ]; then
         awk -v mp="$mountpoint" '$2 ~ "^"mp { print $2 }' /proc/self/mounts | LC_ALL=C sort -r | xargs -r umount -l 2>/dev/null
         [ -f resolv.conf.tmp ] && mv -f resolv.conf.tmp "$mountpoint/etc/resolv.conf" 2>/dev/null
         [ -f nsswitch.conf.tmp ] && mv -f nsswitch.conf.tmp "$mountpoint/etc/nsswitch.conf" 2>/dev/null
     fi
-
     set -e
 }
 
@@ -118,12 +115,16 @@ export LC_ALL=C
 chroot_dir=rootfs
 overlay_dir=../overlay
 
+# Trap exit signals to teardown_mountpoint
+trap 'teardown_mountpoint "$chroot_dir"' EXIT INT TERM HUP QUIT
+
 rm -rf ${chroot_dir} && mkdir -p ${chroot_dir}
 tar -xpI 'xz -d -T0' -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz" -C ${chroot_dir}
 
 setup_mountpoint $chroot_dir
 
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
+#configure_apt_sources "$chroot_dir" "${SUITE}"
 
 chroot $chroot_dir apt-get update
 chroot $chroot_dir apt-get -y upgrade
@@ -133,6 +134,7 @@ if [[ ${LAUNCHPAD} == "Y" ]]; then
 else
     mkdir -p ${chroot_dir}/tmp
 
+    # Install u-boot
     if [ -f "./${uboot_package}" ]; then
         base_name=$(echo "$uboot_package" | sed 's/_.*//')
         cp "./${uboot_package}" "${chroot_dir}/tmp/${base_name}.deb"
@@ -146,6 +148,7 @@ else
         exit 1
     fi
 
+    # Copy all kernel debs and shorten their names
     for deb in "${kernel_debs[@]}"; do
         if [ ! -f "./$deb" ]; then
             echo "Error: missing deb file $deb"
@@ -156,76 +159,38 @@ else
         cp "./$deb" "${chroot_dir}/tmp/${base_name}.deb"
     done
 
+    # Verify copies
     ls -lh "${chroot_dir}/tmp/"
 
+    # Install kernel debs
     deb_files=""
-    header_deb=""
     for deb in "${kernel_debs[@]}"; do
         base_name=$(echo "$deb" | sed 's/_.*//')
         deb_files+="/tmp/${base_name}.deb "
-        case "$base_name" in
-            linux-rockchip-headers*|linux-headers-*)
-                header_deb="/tmp/${base_name}.deb"
-                ;;
-        esac
     done
+    chroot ${chroot_dir} /bin/bash -c "apt-get -y purge \$(dpkg --list | grep -Ei 'linux-image|linux-headers|linux-modules|linux-rockchip' | awk '{ print \$2 }')"
+    chroot "${chroot_dir}" dpkg -i $deb_files || chroot "${chroot_dir}" apt-get -fy install
 
-    if [ -n "${header_deb}" ]; then
-        echo "Installing kernel headers first: ${header_deb}"
-        chroot "${chroot_dir}" /bin/bash -lc "set -e; dpkg -i ${header_deb} 2>/tmp/dpkg_headers_install.log || true; apt-get update -y; apt-get -f install -y"
-    fi
-
-    echo "Installing kernel packages: ${deb_files}"
-    chroot "${chroot_dir}" /bin/bash -lc "set -e; dpkg -i ${deb_files} 2>/tmp/dpkg_kern_install.log || apt-get -fy install -y"
-
-    chroot "${chroot_dir}" /bin/bash -lc '
-set -e
-HDRDIR="$(ls -d /usr/src/linux-headers-6.1.* 2>/dev/null | head -n1 || true)"
-if [ -z "$HDRDIR" ]; then
-  HDRDIR="$(ls -d /usr/src/linux-headers-* 2>/dev/null | head -n1 || true)"
-fi
-if [ -z "$HDRDIR" ]; then
-  echo "WARN: HDRDIR not found; ensure matching linux-headers package is installed" >&2
-  exit 0
-fi
-ver="$(basename "$HDRDIR" | sed "s/^linux-headers-//")"
-mkdir -p "/lib/modules/$ver"
-ln -sf "$HDRDIR" "/lib/modules/$ver/build"
-echo "INFO: linked /lib/modules/$ver/build -> $HDRDIR"
-apt-get update -y || true
-apt-get install -y --no-install-recommends \
-  build-essential make bc dkms libncurses-dev libelf-dev perl python3 \
-  flex bison || true
-if ! command -v flex >/dev/null 2>&1; then
-  echo "ERROR: flex not found after install" >&2
-  exit 1
-fi
-if ! command -v bison >/dev/null 2>&1; then
-  echo "ERROR: bison not found after install" >&2
-  exit 1
-fi
-if [ -f "$HDRDIR/Makefile" ]; then
-  echo "INFO: running make modules_prepare in $HDRDIR"
-  (cd "$HDRDIR" && make modules_prepare) || {
-    echo "ERROR: make modules_prepare failed in $HDRDIR" >&2
-    exit 1
-  }
-else
-  echo "WARN: $HDRDIR/Makefile not found"
-fi
-if [ -f "$HDRDIR/include/generated/utsrelease.h" ] || [ -f "/lib/modules/$ver/build/Makefile" ]; then
-  echo "INFO: headers appear prepared for $ver"
-else
-  echo "WARN: headers may be incomplete for $ver" >&2
-  ls -la "$HDRDIR" || true
-  ls -la "/lib/modules/$ver" || true
-fi
-'
-
+    # Hold kernel packages to prevent upgrades
     for deb in "${kernel_debs[@]}"; do
         base_name=$(echo "$deb" | sed 's/_.*//')
-        chroot "${chroot_dir}" apt-mark hold "${base_name}" || true
+        chroot "${chroot_dir}" apt-mark hold "${base_name}"
     done
+
+    # Determine installed kernel version for hooks
+    kernel_versions=()
+    for deb in "${kernel_debs[@]}"; do
+        if [[ "$deb" == linux-image-* ]]; then
+            version=${deb#linux-image-}
+            version=${version%%_*}
+            kernel_versions+=("${version}")
+        fi
+    done
+    if [[ ${#kernel_versions[@]} -gt 0 ]]; then
+        mapfile -t sorted_kernel_versions < <(printf '%s\n' "${kernel_versions[@]}" | sort -V)
+        target_kernel_version="${sorted_kernel_versions[$(( ${#sorted_kernel_versions[@]} - 1 ))]}"
+        export TARGET_KERNEL_VERSION="${target_kernel_version}"
+    fi
 fi
 
 if [[ -z "${TARGET_KERNEL_VERSION}" ]]; then
@@ -244,10 +209,11 @@ chroot ${chroot_dir} apt-get -y clean
 chroot ${chroot_dir} apt-get -y autoclean
 chroot ${chroot_dir} apt-get -y autoremove
 
-# 原有解绑逻辑保留，不冲突
+# Keep original trap unbinding logic; no conflict
 trap - EXIT INT TERM HUP QUIT
 teardown_mountpoint $chroot_dir
 
+# Finalize package and cleanup
 cd ${chroot_dir} && tar --warning=no-file-changed -cpf "../ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64-${BOARD}.rootfs.tar" . && cd .. && rm -rf ${chroot_dir}
 ../scripts/build-image.sh "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64-${BOARD}.rootfs.tar"
 rm -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64-${BOARD}.rootfs.tar"

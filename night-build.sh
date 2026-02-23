@@ -363,6 +363,8 @@ main() {
     for item in "${ROOTFS_MATRIX[@]}"; do
         IFS="|" read -r suite flavor <<< "$item"
         build_rootfs "${suite}" "${flavor}"
+
+        break
     done
 
     # 构建所有镜像
@@ -372,6 +374,8 @@ main() {
     for item in "${BUILD_MATRIX[@]}"; do
         IFS="|" read -r board suite flavor <<< "$item"
         build_image "${board}" "${suite}" "${flavor}"
+
+        break
     done
 
     echo -e "\n===== 所有构建任务完成 ====="
