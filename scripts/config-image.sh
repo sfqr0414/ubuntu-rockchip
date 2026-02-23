@@ -130,7 +130,7 @@ setup_mountpoint $chroot_dir
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
 #configure_apt_sources "$chroot_dir" "${SUITE}"
 
-chroot $chroot_dir apt-get update
+chroot $chroot_dir apt-get update -o Acquire::Max-Fetchers=16 -o Acquire::Max-Conns-Per-Host=8
 chroot $chroot_dir apt-get -y upgrade
 
 if [[ ${LAUNCHPAD} == "Y" ]]; then
