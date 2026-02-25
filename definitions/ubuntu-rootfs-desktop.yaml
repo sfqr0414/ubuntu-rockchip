@@ -1,5 +1,5 @@
 name: ubuntu-rootfs
-display-name: Ubuntu rootfs ARM64
+display-name: Ubuntu rootfs ARM64 (Desktop)
 revision: 2
 architecture: arm64
 series: plucky
@@ -7,6 +7,7 @@ class: preinstalled
 kernel: linux-generic
 rootfs:
   archive: ubuntu
+# flavor: platform
   components:
     - main
     - restricted
@@ -19,17 +20,16 @@ rootfs:
       - "https://git.launchpad.net/~ubuntu-core-dev/ubuntu-seeds/+git/"
     branch: plucky
     names:
-      - minimal
-      - standard
+#     - minimal
+#     - standard
+#     - supported-desktop
+      - desktop-minimal
 customization:
   cloud-init:
     user-data: |
       #cloud-config
       oem-config:
         enabled: true
-      users:
-        - name: ubuntu
-          sudo: ALL=(ALL) NOPASSWD:ALL
   manual:
     copy-file:
       - source: tweaks.sh
@@ -37,19 +37,26 @@ customization:
     execute:
       - path: /tweaks.sh
   extra-packages:
-    - name: "u-boot-tools"
     - name: "u-boot-menu"
+    - name: "u-boot-menu"
+    - name: "initramfs-tools"
     - name: "ubuntu-desktop-minimal"
     - name: "oem-config-gtk"
-    - name: "oem-config"
-    - name: "libgtk-3-0"
     - name: "cloud-init"
+    - name: "squashfs-tools"
+    - name: "snapd"
   extra-snaps:
-    - name: snapd
-    - name: bare
+    - name: core
+    - name: core22
     - name: core24
+    - name: bare
     - name: gtk-common-themes
+    - name: firefox
+# 提醒：如需自动生成镜像文件，请取消以下注释
 # artifacts:
-#  img:
-#    - name: ubuntu-rootfs-arm64.img
-#      volume: ubuntu
+#   rootfs-tarball:
+#     - name: ubuntu-rootfs-arm64.tar.xz
+#       compression: xz
+#   img:
+#     - name: ubuntu-rootfs-arm64.img
+#       volume: ubuntu

@@ -102,7 +102,8 @@ docker_build_prepare(){
     }
 
     docker_build_file() {
-        FROM ubuntu:25.04
+        ARG UBUNTU_VERSION=25.04
+        FROM ghcr.io/sfqr0414/ubuntu:${UBUNTU_VERSION}
         ENV DEBIAN_FRONTEND=noninteractive
         RUN << EOF 
         ${SUBSTITUTED_SCRIPT} 
@@ -262,10 +263,12 @@ EOF
         fi
 
         echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
-        tar -cJf ${FINAL_TAR_PATH} \
+        tar -cf - \
             -p -C "${BUILD_DIR}/chroot" . \
             --sort=name \
-            --xattrs
+            --xattrs \
+            --exclude={var/lib/apt/lists/*,var/cache/apt/*,var/cache/debconf/*,tmp/*,var/tmp/*,usr/share/doc/*,usr/share/man/*,usr/share/info/*,usr/share/locale/*,var/log/*,swapfile,lost+found} \
+            | xz -9 -e -T0 --memlimit=80% --block-size=128MiB > "${FINAL_TAR_PATH}"
 
         # Verify artifact
         echo -e "\n🔍 Verify artifact:"

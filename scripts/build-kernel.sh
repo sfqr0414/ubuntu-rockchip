@@ -337,7 +337,7 @@ docker_run_prepare(){
         fakeroot debian/rules clean 2>&1 || { echo "clean step failed"; exit 1; }
 
         echo "Running: fakeroot debian/rules binary-headers binary-rockchip do_mainline_build=true"
-        fakeroot debian/rules binary-headers binary-rockchip do_mainline_build=true 2>&1 || { 
+        fakeroot debian/rules binary-headers binary-rockchip do_mainline_build=true MAKEFLAGS="-j$(nproc)" 2>&1 || { 
             echo "Kernel build failed"; 
             exit 1; 
         }

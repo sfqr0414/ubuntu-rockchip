@@ -7,6 +7,7 @@ class: preinstalled
 kernel: linux-generic
 rootfs:
   archive: ubuntu
+# flavor: platform
   components:
     - main
     - restricted
@@ -19,9 +20,10 @@ rootfs:
       - "https://git.launchpad.net/~ubuntu-core-dev/ubuntu-seeds/+git/"
     branch: plucky
     names:
-      - server
-      - minimal
-      - standard
+#     - supported-server
+#     - minimal
+#     - standard
+      - server-minimal
 customization:
   cloud-init:
     user-data: |
@@ -42,9 +44,11 @@ customization:
     - name: "u-boot-menu"
     - name: "initramfs-tools"
     - name: "cloud-init"
+    - name: "squashfs-tools"
+    - name: "snapd"
   extra-snaps:
-    - name: snapd
     - name: lxd
+    - name: core
     - name: core22
     - name: core24
 # artifacts:
