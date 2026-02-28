@@ -261,13 +261,27 @@ EOF
         if ps -p $MONITOR_PID > /dev/null; then
             wait $MONITOR_PID || true
         fi
-
+        
         echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
+
+        EXCLUDE_DIRS=(
+            "var/lib/apt/lists/*"
+            "var/cache/apt/*"
+            "var/cache/debconf/*"
+            "tmp/*"
+            "var/tmp/*"
+            "var/log/*"
+            "swapfile"
+            "lost+found"
+        )
+
+        EXCLUDE_PATHS="{$(printf "%s," "${EXCLUDE_DIRS[@]}" | sed 's/,$//')}"
+        
         tar -cf - \
             -p -C "${BUILD_DIR}/chroot" \
             --sort=name \
             --xattrs \
-            --exclude={var/lib/apt/lists/*,var/cache/apt/*,var/cache/debconf/*,tmp/*,var/tmp/*,usr/share/doc/*,usr/share/man/*,usr/share/info/*,usr/share/locale/*,var/log/*,swapfile,lost+found} \
+            --exclude=$EXCLUDE_PATHS \
             . \
             | xz -9 -e -T0 --memlimit=80% --block-size=128MiB > "${FINAL_TAR_PATH}"
 
