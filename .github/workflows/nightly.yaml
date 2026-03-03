@@ -49,7 +49,9 @@ jobs:
           rootfs_matrix=""
           for suite in config/suites/*; do
             for flavor in config/flavors/*; do
-              rootfs_matrix+="{\"suite\":\"$(basename "${suite%.sh}")\",\"flavor\":\"$(basename "${flavor%.sh}")\"},"
+              if [[ -z "$BUILD_ROOTFS" || "$BUILD_ROOTFS" != "false" ]]; then
+                rootfs_matrix+="{\"suite\":\"$(basename "${suite%.sh}")\",\"flavor\":\"$(basename "${flavor%.sh}")\"},"
+              fi
             done
           done
           if [ -z "$rootfs_matrix" ]; then
