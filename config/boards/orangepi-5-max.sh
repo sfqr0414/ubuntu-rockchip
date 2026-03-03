@@ -18,7 +18,8 @@ function config_image_hook__orangepi-5-max() {
     if [ "${suite}" == "jammy" ] || [ "${suite}" == "noble" ]; then
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
         chroot "${rootfs}" apt-get -y install librga mpp gstreamer1.0-rockchip ffmpeg
-    else
+    fi
+    if [ "TRUE" ]; then
         DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
         DOWNLOAD_FILES=(#"armbian-firmware-gpu-panthor.deb" \
                         "armbian-firmware-wifi-ap6275p.deb" \
