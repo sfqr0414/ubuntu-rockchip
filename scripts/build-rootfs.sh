@@ -181,6 +181,7 @@ docker_run_prepare(){
             echo "Please ensure host definitions directory contains ${YAML_CONFIG_FILENAME}" >&2
             exit 1
         fi
+        sed -i 's/^series: plucky$/series: '"$SUITE"'/' "${YAML_CONFIG_FILE}"
 
         # Configure binfmt
         mkdir -p /proc/sys/fs/binfmt_misc
