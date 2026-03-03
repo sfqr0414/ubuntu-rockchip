@@ -308,6 +308,7 @@ EOF
         --cap-add=ALL \
         -e RELEASE_VERSION="${RELEASE_VERSION}" \
         -e FLAVOR="${FLAVOR}" \
+        -e SUITE="${SUITE}" \
         -v "${HOST_ROOTFS_ROOT}:/rootfs-build" \
         -v "${BUILD_DIR}:/rootfs-build/build" \
         -v "${CONTAINER_SCRIPT}:/tmp/run-script.sh:ro" \
