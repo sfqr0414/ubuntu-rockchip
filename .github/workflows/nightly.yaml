@@ -123,40 +123,32 @@ jobs:
       - name: Check if rootfs zip exists in remote Release
         id: check_remote_rootfs
         continue-on-error: true
-        run: |
-          if gh release view ${{ env.RELEASE_TAG }} --repo ${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}; then
-            gh release view ${{ env.RELEASE_TAG }} \
-              --repo ${{ env.REPO_OWNER }}/${{ env.REPO_NAME }} \
-              --json assets \
-              --jq ".assets[] | select(.name == \"${{ steps.vars.outputs.rootfs_zip_name }}\") | .name" > /tmp/asset_check.txt
-          else
-            echo "Release ${{ env.RELEASE_TAG }} not found" > /tmp/asset_check.txt
-          fi
-          if [ -s /tmp/asset_check.txt ] && ! grep -q "not found" /tmp/asset_check.txt; then
-            echo "✅ Found remote rootfs zip"
-            echo "remote_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Remote rootfs zip not found or release missing"
-            echo "remote_exists=false" >> $GITHUB_OUTPUT
-          fi
-
+        uses: sfqr0414/release-restore-zip@v1
+        with:
+          release_tag: ${{ env.RELEASE_TAG }}
+          zip_name: ${{ steps.vars.outputs.rootfs_zip_name }}
+          unzip: true
+          output_dir: ${{ github.workspace }}/build
+          github_token: ${{ github.token }}
+        
       - name: Download remote rootfs zip (if exists)
-        if: steps.check_remote_rootfs.outputs.remote_exists == 'true'
+        if: steps.check_remote_rootfs.outputs.status == 1
         run: |
-          mkdir -p ${{ github.workspace }}/build
-          wget -O ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }} ${{ steps.vars.outputs.rootfs_download_url }}
-          ls -la ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }}
-          unzip -o ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }} -d ${{ github.workspace }}/build/
+          #mkdir -p ${{ github.workspace }}/build
+          #wget -O ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }} ${{ steps.vars.outputs.rootfs_download_url }}
+          #ls -la ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }}
+          #unzip -o ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }} -d ${{ github.workspace }}/build/
           ls -la ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_tar_name }} || { echo "Unzip failed"; exit 1; }
 
       - name: Install full build dependencies (only if remote rootfs not found)
-        if: steps.check_remote_rootfs.outputs.remote_exists == 'false'
+        if: steps.check_remote_rootfs.outputs.status == 0
         shell: bash
         run: |
           dpkg -l | grep -q firefox && sudo apt-mark hold firefox
           for snap_pkg in core22 bare gtk-common-themes firefox; do
             snap list | grep -q "^${snap_pkg}" && sudo snap refresh --hold=forever ${snap_pkg} || true
           done
+          exit 0
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y --no-install-recommends \
             build-essential gcc-aarch64-linux-gnu bison \
@@ -173,7 +165,7 @@ jobs:
           update-binfmts --display qemu-aarch64
 
       - name: Add execute permission to scripts (only if remote rootfs not found)
-        if: steps.check_remote_rootfs.outputs.remote_exists == 'false'
+        if: steps.check_remote_rootfs.outputs.status == 0
         run: |
           chmod +x ./build.sh
           chmod +x ./scripts/*.sh
@@ -181,7 +173,7 @@ jobs:
           ls -la ./scripts/build-rootfs.sh
 
       - name: Create correct chroot/rootfs directories (only if remote rootfs not found)
-        if: steps.check_remote_rootfs.outputs.remote_exists == 'false'
+        if: steps.check_remote_rootfs.outputs.status == 0
         shell: bash
         run: |
           mkdir -p ${{ github.workspace }}/build/chroot/etc/default
@@ -191,7 +183,7 @@ jobs:
           ls -la ${{ github.workspace }}/build/
 
       - name: Build rootfs (only if remote rootfs not found)
-        if: steps.check_remote_rootfs.outputs.remote_exists == 'false'
+        if: steps.check_remote_rootfs.outputs.status == 0
         shell: bash
         run: |
           cd ${{ github.workspace }}
@@ -243,22 +235,15 @@ jobs:
           zip -r ${{ steps.vars.outputs.rootfs_zip_name }} ${{ steps.vars.outputs.rootfs_tar_name }}
 
       - name: Upload rootfs zip to GitHub Release
-        if: steps.check_remote_rootfs.outputs.remote_exists == 'false' && env.GITHUB_TOKEN != ''
+        if: steps.check_remote_rootfs.outputs.status == 0 && env.GITHUB_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if ! gh release view ${{ env.RELEASE_TAG }} --repo ${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}; then
-            gh release create ${{ env.RELEASE_TAG }} \
-              --title "Workflow Build Artifacts" \
-              --notes "Automated nightly build rootfs/artifacts" \
-              --repo ${{ env.REPO_OWNER }}/${{ env.REPO_NAME }} \
-              --draft=false --prerelease=true
-          fi
-          gh release upload ${{ env.RELEASE_TAG }} \
-            ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }} \
-            --repo ${{ env.REPO_OWNER }}/${{ env.REPO_NAME }} \
-            --clobber
-
+        uses: sfqr0414/release-upload-zip@v1
+        with:
+          zip_path: ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }}
+          release_tag: ${{ env.RELEASE_TAG }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+    
       - name: 🧹 清理rootfs临时构建文件（释放空间）
         run: |
           sudo rm -rf ${{ github.workspace }}/build/chroot || true
