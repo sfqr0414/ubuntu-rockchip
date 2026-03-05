@@ -229,7 +229,7 @@ jobs:
 
       # 新增：打包并上传Rootfs到Release
       - name: Package rootfs tar.xz to zip (for Release upload)
-        if: steps.check_remote_rootfs.outputs.remote_exists == 'false'
+        if: steps.check_remote_rootfs.outputs.status == 0
         run: |
           cd ${{ github.workspace }}/build
           zip -r ${{ steps.vars.outputs.rootfs_zip_name }} ${{ steps.vars.outputs.rootfs_tar_name }}
