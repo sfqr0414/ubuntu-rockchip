@@ -178,7 +178,7 @@ docker_build_prepare(){
 
     docker_build_file() {
         # ARGs (before FROM)
-        ARG UBUNTU_VERSION=25.04
+        ARG UBUNTU_VERSION=24.04
         # Base image
         FROM ghcr.io/sfqr0414/ubuntu:${UBUNTU_VERSION}
         # Define container ARGs
