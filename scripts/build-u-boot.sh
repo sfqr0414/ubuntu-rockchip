@@ -157,7 +157,7 @@ if ! docker images | grep -q "${DOCKER_IMAGE}"; then
     echo "调试：临时 Dockerfile 路径 = ${TEMP_DOCKERFILE}"
     cat > "${TEMP_DOCKERFILE}" << EOF
 # 定义 ARG（必须在 FROM 前）
-ARG UBUNTU_VERSION=25.04
+ARG UBUNTU_VERSION
 # 基础镜像
 # FROM ubuntu:\${UBUNTU_VERSION}
 FROM ghcr.io/sfqr0414/ubuntu:${UBUNTU_VERSION}
