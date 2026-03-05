@@ -178,13 +178,12 @@ docker_build_prepare(){
 
     docker_build_file() {
         # ARGs (before FROM)
-        ARG UBUNTU_VERSION
-        ARG EXPECTED_GCC_VERSION
+        ARG UBUNTU_VERSION=25.04
         # Base image
         FROM ghcr.io/sfqr0414/ubuntu:${UBUNTU_VERSION}
-        ENV UBUNTU_VERSION=${UBUNTU_VERSION}
-        ENV EXPECTED_GCC_VERSION=${EXPECTED_GCC_VERSION}
         # Define container ARGs
+        ARG UBUNTU_VERSION
+        ARG EXPECTED_GCC_VERSION
         # Global env vars
         ENV DEBIAN_FRONTEND=noninteractive
         ENV DEBCONF_NONINTERACTIVE_SEEN=true
@@ -201,7 +200,6 @@ EOF
     TEMPLATE_SCRIPT=$(type docker_build_file | extract_body)
     SUBSTITUTED_SCRIPT=$(type run_script | extract_body) 
     FINAL_SCRIPT="${TEMPLATE_SCRIPT//\$\{SUBSTITUTED_SCRIPT\}/$SUBSTITUTED_SCRIPT}"
-    #FINAL_SCRIPT="${FINAL_SCRIPT//\$\{UBUNTU_VERSION\}/${UBUNTU_VERSION}}"
     printf '%s' "$FINAL_SCRIPT" > "${TEMP_DOCKERFILE}" 
     )
 
