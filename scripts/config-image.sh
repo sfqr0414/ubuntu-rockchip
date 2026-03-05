@@ -84,14 +84,14 @@ setup_mountpoint() {
         chown root:kmem /dev/mem
     fi
     mount dev-live -t devtmpfs "$mountpoint/dev"
-    mount devpts-live -t devpts -o nodev,nosuid "$mountpoint/dev/pts"
+    mount devpts-live -t devpts -o gid=5,mode=620 "$mountpoint/dev/pts"
     mount proc-live -t proc "$mountpoint/proc"
     mount sysfs-live -t sysfs "$mountpoint/sys"
     mount securityfs -t securityfs "$mountpoint/sys/kernel/security"
     mount -t cgroup2 none "$mountpoint/sys/fs/cgroup"
     mount -t tmpfs -o size=15G none "$mountpoint/tmp"
-    mount -t tmpfs none "$mountpoint/var/lib/apt/lists"
-    mount -t tmpfs none "$mountpoint/var/cache/apt"
+    #mount -t tmpfs none "$mountpoint/var/lib/apt/lists"
+    #mount -t tmpfs none "$mountpoint/var/cache/apt"
     mv "$mountpoint/etc/resolv.conf" resolv.conf.tmp
     cp /etc/resolv.conf "$mountpoint/etc/resolv.conf"
     mv "$mountpoint/etc/nsswitch.conf" nsswitch.conf.tmp
@@ -132,6 +132,7 @@ type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
 
 chroot $chroot_dir apt-get update -o Acquire::Max-Fetchers=16 -o Acquire::Max-Conns-Per-Host=8
 chroot $chroot_dir apt-get -y upgrade
+chroot $chroot_dir apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg2
 
 if [[ ${LAUNCHPAD} == "Y" ]]; then
     chroot ${chroot_dir} apt-get -y install "u-boot-${BOARD}"
