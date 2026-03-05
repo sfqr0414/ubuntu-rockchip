@@ -17,6 +17,7 @@ function config_image_hook__orangepi-5-max() {
 
     if [ "${suite}" == "jammy" ] || [ "${suite}" == "noble" ]; then
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
+        chroot "${rootfs}" apt-get update
         chroot "${rootfs}" apt-get -y install librga mpp gstreamer1.0-rockchip ffmpeg
     fi
     if [ "TRUE" ]; then
