@@ -178,12 +178,11 @@ docker_build_prepare(){
 
     docker_build_file() {
         # ARGs (before FROM)
-        ARG UBUNTU_VERSION=25.04
+        ARG UBUNTU_VERSION
+        ARG EXPECTED_GCC_VERSION
         # Base image
         FROM ghcr.io/sfqr0414/ubuntu:${UBUNTU_VERSION}
         # Define container ARGs
-        ARG UBUNTU_VERSION
-        ARG EXPECTED_GCC_VERSION
         # Global env vars
         ENV DEBIAN_FRONTEND=noninteractive
         ENV DEBCONF_NONINTERACTIVE_SEEN=true
