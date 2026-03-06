@@ -26,18 +26,23 @@ function config_image_hook__orangepi-5-max() {
         chroot "${rootfs}" apt-get install -y --no-install-recommends \
             software-properties-common ca-certificates gnupg dirmngr dctrl-tools
 
-        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
-        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
+        echo "🔍 --- 开始添加 Rockchip PPA (捕捉调试信息) ---"
+        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip 2>&1 || echo "❌ Rockchip PPA 运行异常！"
         
-        find "${rootfs}/etc/apt/sources.list.d/" -name "*.list" -exec sed -i 's/^deb http/deb [arch=arm64] http/g' {} +
+        echo "🔍 --- 开始添加 Multimedia PPA (捕捉调试信息) ---"
+        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia 2>&1 || echo "❌ Multimedia PPA 运行异常！"
+        
         find "${rootfs}/etc/apt/sources.list.d/" -name "*.sources" -exec sed -i '/^URIs:/i Architectures: arm64' {} +
+        find "${rootfs}/etc/apt/sources.list.d/" -name "*.list" -exec sed -i 's/^deb http/deb [arch=arm64] http/g' {} +
 
         chroot "${rootfs}" apt-get update
 
-        echo "🚨 --- 正在验货 PPA:jjriek-rockchip-multimedia ---"
-        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip-multimedia"
+        echo "🚨 --- 验证 PPA 配置文件内容 ---"
+        ls -l "${rootfs}/etc/apt/sources.list.d/"
+        cat "${rootfs}/etc/apt/sources.list.d/"*
         
-        echo "🚨 --- 正在验货 PPA:jjriek-rockchip ---"
+        echo "🚨 --- 正在验货 ---"
+        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip-multimedia"
         chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip"
         echo "🚨 --- 验货结束 ---"
 
