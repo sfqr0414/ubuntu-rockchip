@@ -105,9 +105,7 @@ docker_build_prepare(){
         ARG UBUNTU_VERSION=25.04
         FROM ghcr.io/sfqr0414/ubuntu:${UBUNTU_VERSION}
         ENV DEBIAN_FRONTEND=noninteractive
-        RUN << EOF 
-        ${SUBSTITUTED_SCRIPT} 
-EOF
+        RUN bash -c '{ ${SUBSTITUTED_SCRIPT} }'
         WORKDIR /rootfs-build
     }
 
@@ -215,21 +213,22 @@ docker_run_prepare(){
             mkdir -p /usr/local/bin
         fi
 
-        cat > /usr/local/bin/debootstrap <<'EOF'
-#!/bin/bash
-# debootstrap wrapper: inject options from DEBOOTSTRAP_OPTS before passing args
-REAL="/usr/sbin/debootstrap"
-# fallback to whatever is available in PATH if /usr/sbin/debootstrap missing
-if [ ! -x "$REAL" ]; then
-    REAL="$(command -v debootstrap || true)"
-fi
-EXTRA="${DEBOOTSTRAP_OPTS:-}"
-if [ -n "$EXTRA" ]; then
-    exec $REAL $EXTRA "$@"
-else
-    exec $REAL "$@"
-fi
-EOF
+        {
+          #!/bin/bash
+          # debootstrap wrapper: inject options from DEBOOTSTRAP_OPTS before passing args
+          REAL="/usr/sbin/debootstrap"
+          # fallback to whatever is available in PATH if /usr/sbin/debootstrap missing
+          if [ ! -x "$REAL" ]; then
+              REAL="$(command -v debootstrap || true)"
+          fi
+          EXTRA="${DEBOOTSTRAP_OPTS:-}"
+          if [ -n "$EXTRA" ]; then
+              exec $REAL $EXTRA "$@"
+          else
+              exec $REAL "$@"
+          fi
+        } > /usr/local/bin/debootstrap
+        
         chmod +x /usr/local/bin/debootstrap
         # Ensure /usr/local/bin is earlier in PATH so the wrapper is used
         export PATH="/usr/local/bin:${PATH}"
