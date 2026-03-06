@@ -230,6 +230,8 @@ docker_run_prepare(){
               exec $REAL "$@"
           fi
         } > /usr/local/bin/debootstrap
+
+        cat /usr/local/bin/debootstrap
         
         chmod +x /usr/local/bin/debootstrap
         # Ensure /usr/local/bin is earlier in PATH so the wrapper is used
