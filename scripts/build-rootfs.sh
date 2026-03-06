@@ -271,8 +271,8 @@ EOF
         echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
 
         EXCLUDE_DIRS=(
-            "var/lib/apt/lists/*"
-            "var/cache/apt/*"
+            # "var/lib/apt/lists/*"
+            # "var/cache/apt/*"
             "var/cache/debconf/*"
             "tmp/*"
             "var/tmp/*"
