@@ -17,6 +17,7 @@ function config_image_hook__orangepi-5-max() {
 
     chroot "${rootfs}" dpkg --add-architecture arm64
 
+    # 基础源修正
     sed -i "s|http://archive.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports/|g" "${rootfs}/etc/apt/sources.list"
     sed -i 's/^deb http/deb [arch=arm64] http/g' "${rootfs}/etc/apt/sources.list"
 
@@ -26,25 +27,28 @@ function config_image_hook__orangepi-5-max() {
         chroot "${rootfs}" apt-get install -y --no-install-recommends \
             software-properties-common ca-certificates gnupg dirmngr dctrl-tools
 
-        echo "🔍 --- 开始添加 Rockchip PPA (捕捉调试信息) ---"
-        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip 2>&1 || echo "❌ Rockchip PPA 运行异常！"
+        # 添加 PPA
+        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
+        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
         
-        echo "🔍 --- 开始添加 Multimedia PPA (捕捉调试信息) ---"
-        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia 2>&1 || echo "❌ Multimedia PPA 运行异常！"
+        echo "🔍 --- [修改前] 原始 PPA 配置文件内容 ---"
+        find "${rootfs}/etc/apt/sources.list.d/" -type f -exec echo "File: {}" \; -exec cat {} \;
         
+        # 针对 Noble 的多行格式插入架构锁定
+        # 使用更稳健的匹配：在 URIs 这一行前面插入
         find "${rootfs}/etc/apt/sources.list.d/" -name "*.sources" -exec sed -i '/^URIs:/i Architectures: arm64' {} +
         find "${rootfs}/etc/apt/sources.list.d/" -name "*.list" -exec sed -i 's/^deb http/deb [arch=arm64] http/g' {} +
 
-        chroot "${rootfs}" apt-get update
+        echo "🔍 --- [修改后] PPA 配置文件内容 ---"
+        find "${rootfs}/etc/apt/sources.list.d/" -type f -exec echo "File: {}" \; -exec cat {} \;
 
-        echo "🚨 --- 验证 PPA 配置文件内容 ---"
-        ls -l "${rootfs}/etc/apt/sources.list.d/"
-        cat "${rootfs}/etc/apt/sources.list.d/"*
-        
-        echo "🚨 --- 正在验货 ---"
+        # 暴力刷新缓存
+        rm -rf "${rootfs}/var/lib/apt/lists/"*
+        chroot "${rootfs}" apt-get update -o APT::Architectures="arm64"
+
+        echo "🚨 --- 深度验货：检查包版本 ---"
+        chroot "${rootfs}" apt-cache policy librga2
         chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip-multimedia"
-        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip"
-        echo "🚨 --- 验货结束 ---"
 
         chroot "${rootfs}" apt-get -y -o APT::Architectures="arm64" install \
             ubuntu-desktop-rockchip:arm64 \
