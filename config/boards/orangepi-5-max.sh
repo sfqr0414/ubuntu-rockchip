@@ -16,30 +16,38 @@ function config_image_hook__orangepi-5-max() {
     local suite="$3"
 
     chroot "${rootfs}" dpkg --add-architecture arm64
+    sed -i "s|http://archive.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports/|g" "${rootfs}/etc/apt/sources.list"
+    sed -i 's/^deb http/deb [arch=arm64] http/g' "${rootfs}/etc/apt/sources.list"
+    chroot "${rootfs}" apt-get update
 
     if [ "${suite}" == "noble" ]; then
-        chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates dctrl-tools
-        
+        chroot "${rootfs}" apt-get install -y --no-install-recommends \
+            software-properties-common \
+            ca-certificates \
+            gnupg \
+            dirmngr \
+            dctrl-tools
+
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
         
         find "${rootfs}/etc/apt/sources.list.d/" -name "*.list" -exec sed -i 's/^deb http/deb [arch=arm64] http/g' {} +
+        find "${rootfs}/etc/apt/sources.list.d/" -name "*.sources" -exec sed -i '/^URIs:/i Architectures: arm64' {} +
 
-        echo "🚨 --- PPA:jjriek NOBLE BINARY LIST ---"
         chroot "${rootfs}" apt-get update
-        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip-multimedia"
-        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip"
-        echo "🚨 --- END OF LIST ---"
+
+        echo "🚨 --- PPA INVENTORY (Noble Arm64) ---"
+        chroot "${rootfs}" grep-aptavail -n -s Package -F Site ppa.launchpadcontent.net
+        echo "🚨 --- END OF INVENTORY ---"
 
         chroot "${rootfs}" apt-get -y -o APT::Architectures="arm64" install \
             ubuntu-desktop-rockchip:arm64 \
             rockchip-multimedia-config:arm64 \
-            gstreamer1.0-rockchip1:arm64 \
+            gstreamer1.0-rockchip:arm64 \
             libv4l-rkmpp:arm64 \
-            librga2:arm64 \
-            librockchip-mpp1:arm64 \
-            ffmpeg:arm64 \
-            chromium-browser:arm64
+            librga:arm64 \
+            mpp:arm64 \
+            ffmpeg:arm64
     fi
     
     if [ "TRUE" ]; then
