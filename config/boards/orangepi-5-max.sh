@@ -16,15 +16,13 @@ function config_image_hook__orangepi-5-max() {
     local suite="$3"
 
     chroot "${rootfs}" dpkg --add-architecture arm64
-    chroot "${rootfs}" rm -rf /var/lib/apt/lists/*
 
     if [ "${suite}" == "noble" ]; then
-        chroot "${rootfs}" apt-get update
         chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg2
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
-        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
+        # chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
         chroot "${rootfs}" apt-get update
-        chroot "${rootfs}" apt-get -y install librga:arm64 mpp:arm64 gstreamer1.0-rockchip:arm64 ffmpeg:arm64
+        chroot "${rootfs}" apt-get -y install librga mpp gstreamer1.0-rockchip ffmpeg
     fi
     
     if [ "TRUE" ]; then
