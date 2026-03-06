@@ -51,13 +51,8 @@ function config_image_hook__orangepi-5-max() {
         chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip-multimedia"
 
         chroot "${rootfs}" apt-get -y -o APT::Architectures="arm64" install \
-            ubuntu-desktop-rockchip:arm64 \
-            rockchip-multimedia-config:arm64 \
+            mpp:arm64 \
             gstreamer1.0-rockchip:arm64 \
-            libv4l-rkmpp:arm64 \
-            librga2:arm64 \
-            librockchip-mpp1:arm64 \
-            ffmpeg:arm64
     fi
     
     if [ "TRUE" ]; then
