@@ -20,7 +20,7 @@ function config_image_hook__orangepi-5-max() {
     if [ "${suite}" == "noble" ]; then
         chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg dirmngr
 
-        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
+        #chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
 
         chroot "${rootfs}" apt-get update
