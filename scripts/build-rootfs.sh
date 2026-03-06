@@ -105,7 +105,9 @@ docker_build_prepare(){
         ARG UBUNTU_VERSION=25.04
         FROM ghcr.io/sfqr0414/ubuntu:${UBUNTU_VERSION}
         ENV DEBIAN_FRONTEND=noninteractive
-        RUN bash -c '{ ${SUBSTITUTED_SCRIPT} }'
+        RUN << EOF 
+        ${SUBSTITUTED_SCRIPT} 
+EOF
         WORKDIR /rootfs-build
     }
 
