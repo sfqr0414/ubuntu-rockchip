@@ -21,28 +21,27 @@ function config_image_hook__orangepi-5-max() {
         chroot "${rootfs}" apt-get update
         chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg dirmngr
 
-        chroot "${rootfs}" add-apt-repository -y "deb [arch=arm64] https://ppa.launchpadcontent.net/jjriek/rockchip/ubuntu noble main"
-        chroot "${rootfs}" add-apt-repository -y "deb [arch=arm64] https://ppa.launchpadcontent.net/jjriek/rockchip-multimedia/ubuntu noble main"
+        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
+        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
 
-        rm -rf "${rootfs}/var/lib/apt/lists/"*
-        chroot "${rootfs}" apt-get update -o APT::Architectures="arm64"
+        chroot "${rootfs}" apt-get update
 
-        echo "🚨 --- 深度验货：检查包版本 ---"
+        echo "🚨 --- 深度验货：确认货架存在 ---"
         chroot "${rootfs}" sh -c "grep '^Package:' /var/lib/apt/lists/\$(ls /var/lib/apt/lists/ | grep rockchip-multimedia | grep _Packages | head -n1)"
 
         local packages=(
-            "mpp:arm64"
-            "gstreamer1.0-rockchip:arm64"
+            "rockchip-multimedia-config"
+            "libv4l-rkmpp"
+            "gstreamer1.0-rockchip1"
+            "ubuntu-desktop-rockchip"
         )
 
         for pkg in "${packages[@]}"; do
-            local pkg_name="${pkg%%:*}"
-            
-            echo "🔍 验证货架状态: ${pkg_name}"
-            chroot "${rootfs}" apt-cache policy "${pkg_name}"
+            echo "🔍 验证货架状态: ${pkg}"
+            chroot "${rootfs}" apt-cache policy "${pkg}"
 
             echo "🚀 正在安装: ${pkg}"
-            chroot "${rootfs}" apt-get install -y -o APT::Architectures="arm64" "${pkg}"
+            chroot "${rootfs}" apt-get install -y "${pkg}"
         done
     fi
     
