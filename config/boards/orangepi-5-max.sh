@@ -48,7 +48,8 @@ function config_image_hook__orangepi-5-max() {
 
         echo "🚨 --- 深度验货：检查包版本 ---"
         chroot "${rootfs}" apt-cache policy mpp
-        chroot "${rootfs}" apt-cache showpkg $(chroot "${rootfs}" apt-cache dumpavail | grep -B1 'rockchip-multimedia' | grep 'Package:' | awk '{print $2}') | grep '^Package:'
+        #chroot "${rootfs}" apt-cache showpkg $(chroot "${rootfs}" apt-cache dumpavail | grep -B1 'rockchip-multimedia' | grep 'Package:' | awk '{print $2}') | grep '^Package:'
+        chroot "${rootfs}" sh -c "grep '^Package:' /var/lib/apt/lists/\$(ls /var/lib/apt/lists/ | grep rockchip-multimedia | grep _Packages | head -n1)"
 
         chroot "${rootfs}" apt-get -y -o APT::Architectures="arm64" install \
             mpp:arm64 \
