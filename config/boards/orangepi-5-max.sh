@@ -36,9 +36,11 @@ function config_image_hook__orangepi-5-max() {
 
         chroot "${rootfs}" apt-get update
 
-        echo "🚨 --- PPA INVENTORY (Noble Arm64) ---"
-        chroot "${rootfs}" grep-aptavail -n -s Package -F Site ppa.launchpadcontent.net
-        echo "🚨 --- END OF INVENTORY ---"
+        echo "🚨 --- PPA:jjriek NOBLE BINARY LIST ---"
+        chroot "${rootfs}" apt-get update
+        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip-multimedia"
+        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip"
+        echo "🚨 --- END OF LIST ---"
 
         chroot "${rootfs}" apt-get -y -o APT::Architectures="arm64" install \
             ubuntu-desktop-rockchip:arm64 \
