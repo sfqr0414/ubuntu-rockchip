@@ -32,7 +32,6 @@ function config_image_hook__orangepi-5-max() {
             "rockchip-multimedia-config"
             "libv4l-rkmpp"
             "gstreamer1.0-rockchip1"
-            "ubuntu-desktop-rockchip"
         )
 
         for pkg in "${packages[@]}"; do
