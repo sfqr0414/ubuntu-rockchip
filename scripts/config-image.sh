@@ -90,8 +90,8 @@ setup_mountpoint() {
     mount securityfs -t securityfs "$mountpoint/sys/kernel/security"
     mount -t cgroup2 none "$mountpoint/sys/fs/cgroup"
     mount -t tmpfs -o size=15G none "$mountpoint/tmp"
-    #mount -t tmpfs none "$mountpoint/var/lib/apt/lists"
-    #mount -t tmpfs none "$mountpoint/var/cache/apt"
+    mount -t tmpfs none "$mountpoint/var/lib/apt/lists"
+    mount -t tmpfs none "$mountpoint/var/cache/apt"
     mv "$mountpoint/etc/resolv.conf" resolv.conf.tmp
     cp /etc/resolv.conf "$mountpoint/etc/resolv.conf"
     mv "$mountpoint/etc/nsswitch.conf" nsswitch.conf.tmp
@@ -126,11 +126,6 @@ rm -rf ${chroot_dir} && mkdir -p ${chroot_dir}
 tar -xpI 'xz -d -T0' -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz" -C ${chroot_dir}
 
 setup_mountpoint $chroot_dir
-
-#test
-#timeout 60s chroot "$chroot_dir" bash -c "yes '' | add-apt-repository ppa:jjriek/rockchip-multimedia" || echo "❌ Multimedia PPA 退出码: $?"
-#exit 0
-
 
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
 #configure_apt_sources "$chroot_dir" "${SUITE}"
