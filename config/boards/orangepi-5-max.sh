@@ -17,6 +17,7 @@ function config_image_hook__orangepi-5-max() {
 
     chroot "${rootfs}" dpkg --print-architecture 
 
+: <<'NOTES'
     if [ "${suite}" == "noble" ]; then
         chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg dirmngr
 
@@ -42,6 +43,7 @@ function config_image_hook__orangepi-5-max() {
             chroot "${rootfs}" apt-get install -y "${pkg}"
         done
     fi
+NOTES
     
     if [ "TRUE" ]; then
         DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
