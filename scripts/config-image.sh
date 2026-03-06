@@ -113,7 +113,7 @@ teardown_mountpoint() {
     set -e
 }
 
-export DEBIAN_FRONTEND=noninteractive
+#export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
 
 chroot_dir=rootfs
@@ -126,6 +126,11 @@ rm -rf ${chroot_dir} && mkdir -p ${chroot_dir}
 tar -xpI 'xz -d -T0' -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz" -C ${chroot_dir}
 
 setup_mountpoint $chroot_dir
+
+#test
+timeout 60s chroot "${rootfs}" bash -c "yes '' | add-apt-repository ppa:jjriek/rockchip-multimedia" || echo "❌ Multimedia PPA 退出码: $?"
+exit 0
+
 
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
 #configure_apt_sources "$chroot_dir" "${SUITE}"
