@@ -15,6 +15,7 @@ function config_image_hook__orangepi-5-max() {
     local overlay="$2"
     local suite="$3"
 
+    chroot "${rootfs}" dpkg --print-architecture 
     chroot "${rootfs}" dpkg --add-architecture arm64
 
     # 基础源修正
