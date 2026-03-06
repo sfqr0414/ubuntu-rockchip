@@ -47,12 +47,12 @@ function config_image_hook__orangepi-5-max() {
         chroot "${rootfs}" apt-get update -o APT::Architectures="arm64"
 
         echo "🚨 --- 深度验货：检查包版本 ---"
-        chroot "${rootfs}" apt-cache policy librga2
+        chroot "${rootfs}" apt-cache policy mpp
         chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip-multimedia"
 
         chroot "${rootfs}" apt-get -y -o APT::Architectures="arm64" install \
             mpp:arm64 \
-            gstreamer1.0-rockchip:arm64 \
+            gstreamer1.0-rockchip:arm64
     fi
     
     if [ "TRUE" ]; then
