@@ -128,7 +128,7 @@ tar -xpI 'xz -d -T0' -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.
 setup_mountpoint $chroot_dir
 
 #test
-timeout 60s chroot "${rootfs}" bash -c "yes '' | add-apt-repository ppa:jjriek/rockchip-multimedia" || echo "❌ Multimedia PPA 退出码: $?"
+timeout 60s chroot "$chroot_dir" bash -c "yes '' | add-apt-repository ppa:jjriek/rockchip-multimedia" || echo "❌ Multimedia PPA 退出码: $?"
 exit 0
 
 
