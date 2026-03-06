@@ -18,11 +18,28 @@ function config_image_hook__orangepi-5-max() {
     chroot "${rootfs}" dpkg --add-architecture arm64
 
     if [ "${suite}" == "noble" ]; then
-        chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg2
-        # chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
+        chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates dctrl-tools
+        
+        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
+        
+        find "${rootfs}/etc/apt/sources.list.d/" -name "*.list" -exec sed -i 's/^deb http/deb [arch=arm64] http/g' {} +
+
+        echo "🚨 --- PPA:jjriek NOBLE BINARY LIST ---"
         chroot "${rootfs}" apt-get update
-        chroot "${rootfs}" apt-get -y install librga mpp gstreamer1.0-rockchip ffmpeg
+        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip-multimedia"
+        chroot "${rootfs}" grep-aptavail -n -s Package -F Origin "LP-PPA-jjriek-rockchip"
+        echo "🚨 --- END OF LIST ---"
+
+        chroot "${rootfs}" apt-get -y -o APT::Architectures="arm64" install \
+            ubuntu-desktop-rockchip:arm64 \
+            rockchip-multimedia-config:arm64 \
+            gstreamer1.0-rockchip1:arm64 \
+            libv4l-rkmpp:arm64 \
+            librga2:arm64 \
+            librockchip-mpp1:arm64 \
+            ffmpeg:arm64 \
+            chromium-browser:arm64
     fi
     
     if [ "TRUE" ]; then
