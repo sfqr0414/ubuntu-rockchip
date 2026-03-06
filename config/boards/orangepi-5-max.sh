@@ -18,7 +18,6 @@ function config_image_hook__orangepi-5-max() {
     chroot "${rootfs}" dpkg --print-architecture 
 
     if [ "${suite}" == "noble" ]; then
-        chroot "${rootfs}" apt-get update
         chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg dirmngr
 
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
