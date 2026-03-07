@@ -21,6 +21,7 @@ rootfs:
     names:
       - server-minimal
 customization:
+  pocket: updates
   cloud-init:
     user-data: |
       #cloud-config
