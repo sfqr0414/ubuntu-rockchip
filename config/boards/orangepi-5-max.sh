@@ -15,10 +15,14 @@ function config_image_hook__orangepi-5-max() {
     local overlay="$2"
     local suite="$3"
 
+    {
     echo "--- [DEBUG] 当前 rootfs 的所有软件源 ---"
-    chroot "${rootfs}" sh -c "cat /etc/apt/sources.list && ls /etc/apt/sources.list.d/ && cat /etc/apt/sources.list.d/* 2>/dev/null"
+    [ -f "${rootfs}/etc/apt/sources.list" ] && cat "${rootfs}/etc/apt/sources.list" || true
+    ls -F "${rootfs}/etc/apt/sources.list.d/" 2>/dev/null || true
+    find "${rootfs}/etc/apt/sources.list.d/" -type f -name "*.list" -exec echo "File: {}" \; -exec cat {} \; 2>/dev/null || true
     echo "---------------------------------------"
     chroot "${rootfs}" dpkg --print-architecture 
+    }
 
     if [ "${suite}" == "noble" ]; then
         chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg dirmngr
