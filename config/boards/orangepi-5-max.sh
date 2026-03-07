@@ -17,11 +17,10 @@ function config_image_hook__orangepi-5-max() {
 
     chroot "${rootfs}" dpkg --print-architecture 
 
-: <<'NOTES'
     if [ "${suite}" == "noble" ]; then
         chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg dirmngr
 
-        #chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
+        chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
 
         chroot "${rootfs}" apt-get update
@@ -33,6 +32,8 @@ function config_image_hook__orangepi-5-max() {
             "rockchip-multimedia-config"
             "libv4l-rkmpp"
             "gstreamer1.0-rockchip1"
+            "camera-engine-rkaiq-rk3588"
+            "bcmdhd-sdio-dkms"
         )
 
         for pkg in "${packages[@]}"; do
@@ -42,10 +43,9 @@ function config_image_hook__orangepi-5-max() {
             echo "🚀 正在安装: ${pkg}"
             chroot "${rootfs}" apt-get install -y "${pkg}"
         done
-    fi
-NOTES
-    
-    if [ "TRUE" ]; then
+        
+    else
+    #if [ "TRUE" ]; then
         #chroot "${rootfs}" apt-get dist-upgrade -y
         DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
         DOWNLOAD_FILES=(#"armbian-firmware-gpu-panthor.deb" \
