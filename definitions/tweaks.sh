@@ -1,56 +1,30 @@
 #!/bin/bash
 set -x
 
-:<< "NOTES"
-{
-echo "--- Environment Check ---"
-mount -l | grep "chroot" || echo "No specific chroot mounts detected."
-
-# 2. 检查 /dev/null 的状态
-# [ -c /dev/null ] 检查它是否为字符设备
-if [ -c /dev/null ]; then
-    echo "✅ /dev/null is a valid character device. Skipping hack."
-else
-    echo "⚠️ /dev/null is missing or invalid. Applying hack..."
-    # 只有在它不是正常字符设备时才执行 hack
-    rm -f /dev/null
-    touch /dev/null
-    chmod 666 /dev/null
-    echo "✅ /dev/null hacked as a regular file for apt compatibility."
-fi
+host_call() {
+    echo "$1" > /.cmd_fifo
+    while [ ! -f "/.cmd_ack" ]; do sleep 0.1; done
+    rm -f "/.cmd_ack"
 }
-NOTES
 
 {
-mkdir -p /proc /sys /dev/pts
-mount -t proc proc /proc || true
-mount -t sysfs sysfs /sys || true
-mount -t devpts devpts /dev/pts || true
+    # 利用信使（宿主权限）强行补齐设备节点和挂载
+    host_call "mkdir -p /proc /sys /dev/pts"
+    host_call "mount -t proc proc /proc"
+    host_call "mount -t sysfs sysfs /sys"
+    host_call "mount -t devpts devpts /dev/pts"
 
-echo -e "-------- mount nodes -----------\n"
-mount -l
+    # 这一步是赢的核心：宿主有权创建真正的字符设备
+    host_call "rm -f /dev/null && mknod -m 666 /dev/null c 1 3"
+}
 
-:<< "NOTES"
-# 2. 绕过 /dev/null 权限问题 (既然 mknod 不行)
-if [ ! -c /dev/null ]; then
-    echo "⚠️ /dev/null 不是设备文件，执行兼容性 Hack..."
-    rm -f /dev/null
-    touch /dev/null
-    chmod 666 /dev/null
-fi
-NOTES
-
-if [ ! -c /dev/null ]; then
-    echo "⚠️ /dev/null is not a device. Trying bind mount hack..."
-    [ -e /dev/null ] || touch /dev/null
-    mount --bind /proc/self/fd/2 /dev/null || true
-fi
+{
+    echo -e "-------- mount nodes -----------\n"
+    mount -l
 }
 
 # Fix environment and permissions
 {
-    #rm -f /dev/null
-    #mknod -m 666 /dev/null c 1 3
     rm -rf /etc/resolv.conf
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "127.0.0.1 localhost $(hostname)" > /etc/hosts
@@ -130,12 +104,12 @@ EOF
 }
 
 {
-sync
-for mnt in /dev/pts /sys /proc; do
-    umount -l $mnt || true
-done
-
-umount -l /dev/null || true
+    # 清理：必须在脚本结束前卸载，否则 ubuntu-image 拷贝会崩溃
+    host_call "umount -l /proc"roc; do
+    host_call "umount -l /sys"
+    host_call "umount -l /dev/pts"
+    # 别忘了删掉刚建的设备节点，防止拷贝工具报错
+    host_call "rm -f /dev/null"
 }
 
 set +x
