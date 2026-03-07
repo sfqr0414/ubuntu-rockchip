@@ -46,7 +46,7 @@ function config_image_hook__orangepi-5-max() {
 NOTES
     
     if [ "TRUE" ]; then
-        chroot "${rootfs}" apt-get dist-upgrade -y
+        #chroot "${rootfs}" apt-get dist-upgrade -y
         DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
         DOWNLOAD_FILES=(#"armbian-firmware-gpu-panthor.deb" \
                         "armbian-firmware-wifi-ap6275p.deb" \
