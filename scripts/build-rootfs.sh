@@ -160,12 +160,6 @@ docker_run_prepare(){
         # Cleanup
         cleanup() {
             echo -e "\n🔍 Triggering cleanup..."
-
-            umount -l "${BUILD_DIR}/chroot/dev/pts" 2>/dev/null || true
-            umount -l "${BUILD_DIR}/chroot/dev" 2>/dev/null || true
-            umount -l "${BUILD_DIR}/chroot/proc" 2>/dev/null || true
-            umount -l "${BUILD_DIR}/chroot/sys" 2>/dev/null || true
-    
             pkill inotifywait || true
             echo "✅ Cleanup done (artifacts preserved in ${BUILD_DIR})"
         }
@@ -247,12 +241,6 @@ EOF
                 if [[ "$dir" == "${BUILD_DIR}/chroot" ]]; then
                     echo "✅ Detected chroot creation, waiting for subdirectories to initialize..."
                     until [ -d "${BUILD_DIR}/chroot/usr/bin" ]; do sleep 0.1; done
-                    
-                    mount --bind /dev "${BUILD_DIR}/chroot/dev"
-                    mount --bind /dev/pts "${BUILD_DIR}/chroot/dev/pts"
-                    mount -t proc /proc "${BUILD_DIR}/chroot/proc"
-                    mount -t sysfs /sys "${BUILD_DIR}/chroot/sys"
-                    
                     cp /usr/bin/qemu-aarch64-static "${BUILD_DIR}/chroot/usr/bin/"
                     chmod +x "${BUILD_DIR}/chroot/usr/bin/qemu-aarch64-static"
                     echo "✅ qemu copied to chroot"
