@@ -2,12 +2,11 @@ name: ubuntu-rootfs
 display-name: Ubuntu rootfs ARM64 (Desktop)
 revision: 2
 architecture: arm64
-series: plucky
+series: placeholder
 class: preinstalled
 kernel: linux-generic
 rootfs:
   archive: ubuntu
-# flavor: platform
   components:
     - main
     - restricted
@@ -18,18 +17,10 @@ rootfs:
   seed:
     urls:
       - "https://git.launchpad.net/~ubuntu-core-dev/ubuntu-seeds/+git/"
-    branch: plucky
+    branch: placeholder
     names:
-#     - minimal
-#     - standard
-#     - supported-desktop
       - desktop-minimal
 customization:
-  cloud-init:
-    user-data: |
-      #cloud-config
-      oem-config:
-        enabled: true
   manual:
     copy-file:
       - source: tweaks.sh
@@ -37,7 +28,6 @@ customization:
     execute:
       - path: /tweaks.sh
   extra-packages:
-    - name: "u-boot-menu"
     - name: "u-boot-menu"
     - name: "initramfs-tools"
     - name: "ubuntu-desktop-minimal"
