@@ -132,10 +132,11 @@ setup_mountpoint $chroot_dir
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
 #configure_apt_sources "$chroot_dir" "${SUITE}"
 
-chroot $chroot_dir apt-get update -o Acquire::Max-Fetchers=16 -o Acquire::Max-Conns-Per-Host=8
-chroot $chroot_dir apt-get dist-upgrade -y
-#chroot $chroot_dir apt-get -y upgrade
-chroot $chroot_dir apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg2
+chroot $chroot_dir apt-get update
+chroot $chroot_dir apt-get upgrade -y
+
+#chroot $chroot_dir apt-get dist-upgrade -y
+#chroot $chroot_dir apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg2
 
 if [[ ${LAUNCHPAD} == "Y" ]]; then
     chroot ${chroot_dir} apt-get -y install "u-boot-${BOARD}"
