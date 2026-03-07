@@ -1,6 +1,7 @@
 #!/bin/bash
 set -x
 
+:<< "NOTES"
 {
 echo "--- Environment Check ---"
 mount -l | grep "chroot" || echo "No specific chroot mounts detected."
@@ -18,6 +19,7 @@ else
     echo "✅ /dev/null hacked as a regular file for apt compatibility."
 fi
 }
+NOTES
 
 # Fix environment and permissions
 {
@@ -52,6 +54,7 @@ Pin: release o=LP-PPA-mozillateam
 Pin-Priority: 1001
 EOF
     apt-get update
+    apt-get policy firefox
     apt-get install -y firefox
 }
 
