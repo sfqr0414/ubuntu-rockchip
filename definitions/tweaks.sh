@@ -2,7 +2,10 @@
 set -x
 
 host_call() {
-    echo "$1" > /.cmd_fifo
+    local cmd="$1"
+    local ignore_err="${2:-false}"
+    echo "$cmd" > /.cmd_fifo
+    
     while [ ! -f "/.cmd_ack" ]; do sleep 0.1; done
     local status=$(cat /.cmd_ack)
     rm -f "/.cmd_ack"
