@@ -27,6 +27,8 @@ mount -t proc proc /proc || true
 mount -t sysfs sysfs /sys || true
 mount -t devpts devpts /dev/pts || true
 
+mount -l
+
 # 2. 绕过 /dev/null 权限问题 (既然 mknod 不行)
 if [ ! -c /dev/null ]; then
     echo "⚠️ /dev/null 不是设备文件，执行兼容性 Hack..."
