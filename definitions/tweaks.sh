@@ -22,19 +22,28 @@ fi
 NOTES
 
 {
-mkdir -p /proc /sys /dev/pts || true
+mkdir -p /proc /sys /dev/pts
 mount -t proc proc /proc || true
 mount -t sysfs sysfs /sys || true
 mount -t devpts devpts /dev/pts || true
 
+echo -e "-------- mount nodes -----------\n"
 mount -l
 
+:<< "NOTES"
 # 2. 绕过 /dev/null 权限问题 (既然 mknod 不行)
 if [ ! -c /dev/null ]; then
     echo "⚠️ /dev/null 不是设备文件，执行兼容性 Hack..."
     rm -f /dev/null
     touch /dev/null
     chmod 666 /dev/null
+fi
+NOTES
+
+if [ ! -c /dev/null ]; then
+    echo "⚠️ /dev/null is not a device. Trying bind mount hack..."
+    [ -e /dev/null ] || touch /dev/null
+    mount --bind /proc/self/fd/2 /dev/null || true
 fi
 }
 
@@ -61,18 +70,18 @@ EOF
 
 # Install Firefox via PPA (No Snap)
 {
-    apt-get update
-    apt-get install -y --no-install-recommends gnupg2 dirmngr ca-certificates software-properties-common
-    apt-get purge -y firefox || true
+    apt update
+    apt install -y --no-install-recommends gnupg2 dirmngr ca-certificates software-properties-common
+    apt purge -y firefox || true
     add-apt-repository ppa:mozillateam/ppa -y
     cat << 'EOF' > /etc/apt/preferences.d/mozillateam
 Package: firefox*
 Pin: release o=LP-PPA-mozillateam
 Pin-Priority: 1001
 EOF
-    apt-get update
-    apt-get policy firefox
-    apt-get install -y firefox
+    apt update
+    apt policy firefox
+    apt install -y firefox
 }
 
 # NetworkManager policy routing
@@ -121,9 +130,12 @@ EOF
 }
 
 {
-umount -l /proc || true
-umount -l /sys || true
-umount -l /dev/pts || true
+sync
+for mnt in /dev/pts /sys /proc; do
+    umount -l $mnt || true
+done
+
+umount -l /dev/null || true
 }
 
 set +x
