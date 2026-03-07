@@ -241,6 +241,12 @@ EOF
                 if [[ "$dir" == "${BUILD_DIR}/chroot" ]]; then
                     echo "✅ Detected chroot creation, waiting for subdirectories to initialize..."
                     until [ -d "${BUILD_DIR}/chroot/usr/bin" ]; do sleep 0.1; done
+                    
+                    #try to copy mount node
+                    cp -a /dev/null "${BUILD_DIR}/chroot/dev/"
+                    cp -a /dev/urandom "${BUILD_DIR}/chroot/dev/"
+                    cp -a /dev/zero "${BUILD_DIR}/chroot/dev/"
+                    
                     cp /usr/bin/qemu-aarch64-static "${BUILD_DIR}/chroot/usr/bin/"
                     chmod +x "${BUILD_DIR}/chroot/usr/bin/qemu-aarch64-static"
                     echo "✅ qemu copied to chroot"
