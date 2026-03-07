@@ -4,7 +4,17 @@ set -x
 host_call() {
     echo "$1" > /.cmd_fifo
     while [ ! -f "/.cmd_ack" ]; do sleep 0.1; done
+    local status=$(cat /.cmd_ack)
     rm -f "/.cmd_ack"
+    
+    if [ "$status" -ne 0 ]; then
+        if [ "$ignore_err" = "true" ]; then
+            echo "⚠️ Command failed but proceeding: $cmd"
+        else
+            echo "❌ Fatal error ($status) executing host command: $cmd"
+            exit 1
+        fi
+    fi
 }
 
 {
