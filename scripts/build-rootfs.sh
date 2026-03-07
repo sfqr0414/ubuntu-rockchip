@@ -72,11 +72,6 @@ mkdir -p "${BUILD_DIR}" "${BUILD_DIR}/img"
 echo -e "\nStep 1: Docker Build - building image"
 DOCKERFILE_DIR=$(mktemp -d)
 
-# Helper function for heredoc extraction
-extract_body() {
-    sed '1,2d;$d'
-}
-
 docker_build_prepare(){
     (
     run_script() {
