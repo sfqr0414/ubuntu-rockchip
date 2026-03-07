@@ -2,12 +2,11 @@ name: ubuntu-rootfs
 display-name: Ubuntu rootfs ARM64 (Server)
 revision: 2
 architecture: arm64
-series: plucky
+series: placeholder
 class: preinstalled
 kernel: linux-generic
 rootfs:
   archive: ubuntu
-# flavor: platform
   components:
     - main
     - restricted
@@ -18,11 +17,8 @@ rootfs:
   seed:
     urls:
       - "https://git.launchpad.net/~ubuntu-core-dev/ubuntu-seeds/+git/"
-    branch: plucky
+    branch: placeholder
     names:
-#     - supported-server
-#     - minimal
-#     - standard
       - server-minimal
 customization:
   cloud-init:
