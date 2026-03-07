@@ -21,8 +21,8 @@ fi
 
 # Fix environment and permissions
 {
-    rm -f /dev/null
-    mknod -m 666 /dev/null c 1 3
+    #rm -f /dev/null
+    #mknod -m 666 /dev/null c 1 3
     rm -rf /etc/resolv.conf
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "127.0.0.1 localhost $(hostname)" > /etc/hosts
