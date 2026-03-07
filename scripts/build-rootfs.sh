@@ -248,7 +248,10 @@ EOF
                     [[ -z "$cmd" ]] && continue
                     if [[ "$cmd" == "TERMINATE" ]]; then break; fi
                     # 关键：宿主代劳，直接解决权限和节点问题
-                    chroot "$base" /bin/bash -c "$cmd" && touch "$ACK"
+                    #chroot "$base" /bin/bash -c "$cmd" && touch "$ACK"
+                    ( chroot "$base" /bin/bash -c "$cmd" )
+                    local res=$?
+                    echo "$res" > "$ACK"
                 fi
             done
             rm -f "$FIFO" "$ACK"
