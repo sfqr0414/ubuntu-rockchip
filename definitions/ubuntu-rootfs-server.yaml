@@ -42,11 +42,11 @@ customization:
     - name: "cloud-init"
     - name: "squashfs-tools"
     - name: "snapd"
-  extra-snaps:
-    - name: lxd
-    - name: core
-    - name: core22
-    - name: core24
+#  extra-snaps:
+#    - name: lxd
+#    - name: core
+#    - name: core22
+#    - name: core24
 # artifacts:
 #  img:
 #    - name: ubuntu-server-arm64.img
