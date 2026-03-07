@@ -114,6 +114,7 @@ EOF
     host_call "umount -l /dev/pts"
     # 别忘了删掉刚建的设备节点，防止拷贝工具报错
     host_call "rm -f /dev/null"
+    echo "TERMINATE" > /.cmd_fifo
 }
 
 set +x
