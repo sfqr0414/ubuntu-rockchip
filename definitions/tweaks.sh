@@ -21,6 +21,21 @@ fi
 }
 NOTES
 
+{
+mkdir -p /proc /sys /dev/pts || true
+mount -t proc proc /proc || true
+mount -t sysfs sysfs /sys || true
+mount -t devpts devpts /dev/pts || true
+
+# 2. 绕过 /dev/null 权限问题 (既然 mknod 不行)
+if [ ! -c /dev/null ]; then
+    echo "⚠️ /dev/null 不是设备文件，执行兼容性 Hack..."
+    rm -f /dev/null
+    touch /dev/null
+    chmod 666 /dev/null
+fi
+}
+
 # Fix environment and permissions
 {
     #rm -f /dev/null
@@ -101,6 +116,12 @@ EOF
     apt-get autoclean -y
     update-initramfs -u
     u-boot-update
+}
+
+{
+umount -l /proc || true
+umount -l /sys || true
+umount -l /dev/pts || true
 }
 
 set +x
