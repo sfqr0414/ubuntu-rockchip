@@ -21,6 +21,11 @@ rootfs:
     names:
       - desktop-minimal
 customization:
+  cloud-init:
+    user-data: |
+      #cloud-config
+      oem-config:
+        enabled: true
   manual:
     copy-file:
       - source: tweaks.sh
