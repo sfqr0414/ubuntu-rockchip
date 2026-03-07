@@ -39,11 +39,11 @@ customization:
     - name: "oem-config-gtk"
     - name: "cloud-init"
     - name: "squashfs-tools"
-#  extra-snaps:
-#    - name: snapd
-#    - name: bare
-#    - name: core22
-#    - name: core24
+  extra-snaps:
+    - name: snapd
+    - name: bare
+    - name: core22
+    - name: core24
 #    - name: firefox
 #    - name: gnome-42-2204
 #    - name: gtk-common-themes
