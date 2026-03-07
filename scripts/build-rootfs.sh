@@ -20,8 +20,8 @@ DOCKER_IMAGE="ubuntu-image-builder:plucky"
 BUILD_DIR="${HOST_ROOTFS_ROOT}/build"  # Disk build/output directory
 
 # Definitions directories
-DEFINITIONS_DIR_HOST="${HOST_ROOTFS_ROOT}/definitions"       # Host definitions directory
-DEFINITIONS_DIR_CONTAINER="/rootfs-build/definitions"        # Container definitions directory
+DEFINITIONS_DIR_HOST="${HOST_ROOTFS_ROOT}/definitions"        # Host definitions directory
+DEFINITIONS_DIR_CONTAINER="/rootfs-build/definitions"         # Container definitions directory
 
 # Require RELEASE_VERSION and FLAVOR
 REQUIRED_ENVS=("RELEASE_VERSION" "FLAVOR")
@@ -44,8 +44,8 @@ fi
 
 # Auto-construct key paths
 FINAL_TAR_PATH="${BUILD_DIR}/ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz"
-TWEAKS_FILE="${DEFINITIONS_DIR_HOST}/tweaks.sh"                     # Host tweaks path
-YAML_CONFIG_FILENAME="ubuntu-rootfs-${FLAVOR}.yaml"                  # YAML filename
+TWEAKS_FILE="${DEFINITIONS_DIR_HOST}/tweaks.sh"                               # Host tweaks path
+YAML_CONFIG_FILENAME="ubuntu-rootfs-${FLAVOR}.yaml"                                  # YAML filename
 YAML_CONFIG_FILE_HOST="${DEFINITIONS_DIR_HOST}/${YAML_CONFIG_FILENAME}"  # Host YAML full path
 YAML_CONFIG_FILE_CONTAINER="${DEFINITIONS_DIR_CONTAINER}/${YAML_CONFIG_FILENAME}"  # Container YAML full path
 
@@ -71,6 +71,11 @@ mkdir -p "${BUILD_DIR}" "${BUILD_DIR}/img"
 # Step 1: Docker Build
 echo -e "\nStep 1: Docker Build - building image"
 DOCKERFILE_DIR=$(mktemp -d)
+
+# Helper function for heredoc extraction
+extract_body() {
+    sed '1,2d;$d'
+}
 
 docker_build_prepare(){
     (
@@ -154,12 +159,17 @@ docker_run_prepare(){
         # Auto-construct paths
         FINAL_TAR_PATH="${BUILD_DIR}/ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz"
         TWEAKS_FILE="${DEFINITIONS_DIR_CONTAINER}/tweaks.sh"
-        YAML_CONFIG_FILENAME="ubuntu-rootfs-${FLAVOR}.yaml"                  # YAML filename
+        YAML_CONFIG_FILENAME="ubuntu-rootfs-${FLAVOR}.yaml"                                  # YAML filename
         YAML_CONFIG_FILE="${DEFINITIONS_DIR_CONTAINER}/${YAML_CONFIG_FILENAME}"  # Container YAML full path
 
         # Cleanup
         cleanup() {
             echo -e "\n🔍 Triggering cleanup..."
+            # --- MINIMAL ADDITION: Unmount binds before exit ---
+            umount -l "${BUILD_DIR}/chroot/dev/pts" 2>/dev/null || true
+            umount -l "${BUILD_DIR}/chroot/dev" 2>/dev/null || true
+            umount -l "${BUILD_DIR}/chroot/proc" 2>/dev/null || true
+            umount -l "${BUILD_DIR}/chroot/sys" 2>/dev/null || true
             pkill inotifywait || true
             echo "✅ Cleanup done (artifacts preserved in ${BUILD_DIR})"
         }
@@ -208,9 +218,6 @@ docker_run_prepare(){
         export DEBOOTSTRAP_OPTS="--keyring=/usr/share/keyrings/ubuntu-archive-keyring.gpg" #"--no-check-gpg"
 
         # Create a wrapper to inject DEBOOTSTRAP_OPTS into calls to debootstrap.
-        # This avoids modifying ubuntu-image source. The wrapper lives in /usr/local/bin
-        # which is typically earlier in PATH so it will be used in preference to the
-        # system debootstrap.
         if [ ! -d /usr/local/bin ]; then
             mkdir -p /usr/local/bin
         fi
@@ -241,9 +248,17 @@ EOF
                 if [[ "$dir" == "${BUILD_DIR}/chroot" ]]; then
                     echo "✅ Detected chroot creation, waiting for subdirectories to initialize..."
                     until [ -d "${BUILD_DIR}/chroot/usr/bin" ]; do sleep 0.1; done
+                    
+                    # --- MINIMAL ADDITION: Mount real devices to grant full permissions ---
+                    until [ -d "${BUILD_DIR}/chroot/dev" ]; do sleep 0.1; done
+                    mount --bind /dev "${BUILD_DIR}/chroot/dev"
+                    mount --bind /dev/pts "${BUILD_DIR}/chroot/dev/pts"
+                    mount -t proc /proc "${BUILD_DIR}/chroot/proc"
+                    mount -t sysfs /sys "${BUILD_DIR}/chroot/sys"
+                    
                     cp /usr/bin/qemu-aarch64-static "${BUILD_DIR}/chroot/usr/bin/"
                     chmod +x "${BUILD_DIR}/chroot/usr/bin/qemu-aarch64-static"
-                    echo "✅ qemu copied to chroot"
+                    echo "✅ qemu copied and devices mounted to chroot"
                     pkill inotifywait
                     exit 0
                 fi
