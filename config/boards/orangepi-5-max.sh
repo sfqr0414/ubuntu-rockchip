@@ -15,6 +15,9 @@ function config_image_hook__orangepi-5-max() {
     local overlay="$2"
     local suite="$3"
 
+    echo "--- [DEBUG] 当前 rootfs 的所有软件源 ---"
+    chroot "${rootfs}" sh -c "cat /etc/apt/sources.list && ls /etc/apt/sources.list.d/ && cat /etc/apt/sources.list.d/* 2>/dev/null"
+    echo "---------------------------------------"
     chroot "${rootfs}" dpkg --print-architecture 
 
     if [ "${suite}" == "noble" ]; then
