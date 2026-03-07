@@ -235,6 +235,25 @@ EOF
         export PATH="/usr/local/bin:${PATH}"
         echo "✅ Installed debootstrap wrapper at /usr/local/bin/debootstrap (DEBOOTSTRAP_OPTS will be honored)"
 
+        launch_messenger() {
+            local base="$1"
+            local FIFO="$base/.cmd_fifo"
+            local ACK="$base/.cmd_ack"
+            rm -f "$FIFO" "$ACK"
+            mkfifo "$FIFO" && chmod 666 "$FIFO"
+            exec 3<> "$FIFO"
+
+            while true; do
+                if read -r cmd <&3; then
+                    [[ -z "$cmd" ]] && continue
+                    if [[ "$cmd" == "TERMINATE" ]]; then break; fi
+                    # 关键：宿主代劳，直接解决权限和节点问题
+                    chroot "$base" /bin/bash -c "$cmd" && touch "$ACK"
+                fi
+            done
+            rm -f "$FIFO" "$ACK"
+        }
+
         # Monitor chroot creation via inotify
         (
             inotifywait -m -r -e CREATE,ISDIR --format '%w%f' "${BUILD_DIR}" | while read dir; do
@@ -244,6 +263,10 @@ EOF
                     cp /usr/bin/qemu-aarch64-static "${BUILD_DIR}/chroot/usr/bin/"
                     chmod +x "${BUILD_DIR}/chroot/usr/bin/qemu-aarch64-static"
                     echo "✅ qemu copied to chroot"
+
+                    # 2. 启动并脱离父进程的信使
+                    ( launch_messenger "${BUILD_DIR}/chroot" ) & disown
+
                     pkill inotifywait
                     exit 0
                 fi
