@@ -39,9 +39,11 @@ customization:
     - name: "oem-config-gtk"
     - name: "cloud-init"
     - name: "squashfs-tools"
+    - name: "snapd"
   extra-snaps:
-    - name: snapd
+#    - name: snapd
     - name: bare
+    - name: core
     - name: core22
     - name: core24
 #    - name: firefox
