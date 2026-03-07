@@ -1,6 +1,24 @@
 #!/bin/bash
 set -x
 
+{
+echo "--- Environment Check ---"
+mount -l | grep "chroot" || echo "No specific chroot mounts detected."
+
+# 2. 检查 /dev/null 的状态
+# [ -c /dev/null ] 检查它是否为字符设备
+if [ -c /dev/null ]; then
+    echo "✅ /dev/null is a valid character device. Skipping hack."
+else
+    echo "⚠️ /dev/null is missing or invalid. Applying hack..."
+    # 只有在它不是正常字符设备时才执行 hack
+    rm -f /dev/null
+    touch /dev/null
+    chmod 666 /dev/null
+    echo "✅ /dev/null hacked as a regular file for apt compatibility."
+fi
+}
+
 # Fix environment and permissions
 {
     rm -f /dev/null
