@@ -109,9 +109,9 @@ EOF
 
 {
     # 清理：必须在脚本结束前卸载，否则 ubuntu-image 拷贝会崩溃
-    host_call "umount -l /proc"
-    host_call "umount -l /sys"
-    host_call "umount -l /dev/pts"
+    host_call "umount -l /dev/pts || true"
+    host_call "umount -l /sys || true"
+    host_call "umount -l /proc || true"
     # 别忘了删掉刚建的设备节点，防止拷贝工具报错
     host_call "rm -f /dev/null"
     echo "TERMINATE" > /.cmd_fifo
