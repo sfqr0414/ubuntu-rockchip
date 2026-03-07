@@ -56,6 +56,7 @@ if [[ ${LAUNCHPAD} != "Y" ]]; then
     done
 fi
 
+: <<'NOTES'
 # Export chroot wrapper (avoids hardcoded path)
 chroot() {
     runner() {
@@ -76,6 +77,7 @@ chroot() {
     return $?
 }
 export -f chroot
+NOTES
 
 setup_mountpoint() {
     local mountpoint="$1"
@@ -99,7 +101,7 @@ setup_mountpoint() {
 }
 
 teardown_mountpoint() {
-    error "-- [cleanup] unmounting mountpoints --"
+    info "-- [cleanup] unmounting mountpoints --"
     set +e
     cd "$ORIGINAL_PWD" 2>/dev/null
     cd build 2>/dev/null
@@ -183,6 +185,7 @@ else
         chroot "${chroot_dir}" apt-mark hold "${base_name}"
     done
 
+: <<'NOTES'
     # Determine installed kernel version for hooks
     kernel_versions=()
     for deb in "${kernel_debs[@]}"; do
@@ -197,14 +200,18 @@ else
         target_kernel_version="${sorted_kernel_versions[$(( ${#sorted_kernel_versions[@]} - 1 ))]}"
         export TARGET_KERNEL_VERSION="${target_kernel_version}"
     fi
+NOTES
+
 fi
 
+: <<'NOTES'
 if [[ -z "${TARGET_KERNEL_VERSION}" ]]; then
     target_kernel_version=$(chroot "${chroot_dir}" bash -c "ls /lib/modules | grep rockchip | sort -V | tail -n1" || true)
     if [[ -n "${target_kernel_version}" ]]; then
         export TARGET_KERNEL_VERSION="${target_kernel_version}"
     fi
 fi
+NOTES
 
 if [[ $(type -t config_image_hook__"${BOARD}") == function ]]; then
     config_image_hook__"${BOARD}" "${chroot_dir}" "${overlay_dir}" "${SUITE}"
