@@ -184,7 +184,7 @@ docker_run_prepare(){
         echo "var SUITE:${SUITE}"
         echo "before"
         cat "${YAML_CONFIG_FILE}"
-        sed -i 's/^series: plucky$/series: '"$SUITE"'/' "${YAML_CONFIG_FILE}"
+        sed -i "s/placeholder/${SUITE}/g" "${YAML_CONFIG_FILE}"
         echo "after"
         cat "${YAML_CONFIG_FILE}"
 
