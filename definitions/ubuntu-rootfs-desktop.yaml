@@ -39,14 +39,14 @@ customization:
     - name: "oem-config-gtk"
     - name: "cloud-init"
     - name: "squashfs-tools"
-  extra-snaps:
-    - name: snapd
-    - name: bare
-    - name: core22
-    - name: core24
-    - name: firefox
-    - name: gnome-42-2204
-    - name: gtk-common-themes
+#  extra-snaps:
+#    - name: snapd
+#    - name: bare
+#    - name: core22
+#    - name: core24
+#    - name: firefox
+#    - name: gnome-42-2204
+#    - name: gtk-common-themes
 # 提醒：如需自动生成镜像文件，请取消以下注释
 # artifacts:
 #   rootfs-tarball:
