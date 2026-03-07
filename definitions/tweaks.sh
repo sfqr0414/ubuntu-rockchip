@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -x
 
 # Fix environment and permissions
 {
@@ -80,5 +80,7 @@ EOF
     apt-get autoclean -y
     update-initramfs -u
     u-boot-update
-    rm -- "$0"
 }
+
+set +x
+rm -- "$0"
