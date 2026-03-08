@@ -130,7 +130,7 @@ tar -xpI 'xz -d -T0' -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.
 setup_mountpoint $chroot_dir
 
 {
-  echo -e "\n identity $chroot_dir/.apt_shadow_backup" \n"
+  echo -e "\n identity $chroot_dir/.apt_shadow_backup \n"
   ls -lh "$chroot_dir/.apt_shadow_backup" || true
 
   checkapt(){
