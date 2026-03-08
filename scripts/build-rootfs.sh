@@ -365,12 +365,13 @@ EOF
             "lost+found"
         )
 
-        EXCLUDE_PATHS=("${EXCLUDE_DIRS[@]/#/--exclude=}")
+        readarray -t EXCLUDE_PATHS < <(printf "%s\n" "${EXCLUDE_DIRS[@]}" | sed '1!s/^/--exclude=/')
         
         tar -cf - \
             -p -C "${BUILD_DIR}/chroot" \
             --sort=name \
             --xattrs \
+            --sparse \
             --exclude=$EXCLUDE_PATHS \
             . \
             | xz -9 -e -T0 --memlimit=80% --block-size=128MiB > "${FINAL_TAR_PATH}"
