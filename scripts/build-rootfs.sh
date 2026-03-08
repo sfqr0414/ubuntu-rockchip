@@ -309,7 +309,7 @@ EOF
 
             # 还原
             echo -e "\n⏪ Restoring from ${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}\n"
-            rm -rf "${BUILD_DIR}/chroot/etc/apt/*" || true
+            rm -rf "${BUILD_DIR}/chroot/etc/apt/"* || true
             cp -a "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}/." "${BUILD_DIR}/chroot/etc/apt/" || true
             ls -l "${BUILD_DIR}/chroot/etc/apt/" || true
 
