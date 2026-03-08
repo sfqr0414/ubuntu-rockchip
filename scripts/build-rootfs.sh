@@ -299,87 +299,6 @@ EOF
             wait $MONITOR_PID || true
         fi
 
-        checkapt(){
-            local path="$1"
-            echo -e "\n check $path \n"
-            ls -lh  "$path/sources.list" || true
-            cat "$path/sources.list" || true
-
-            echo -e "\n check $path/sources.list.d/ \n"
-            ls -lh "$path/sources.list.d" || true
-            cat "$path/sources.list.d/"* || true
-         }
-
-        {
-            echo -e "\n 🧐 Checking for PPA wipeout... \n"
-            checkapt "${BUILD_DIR}/chroot/etc/apt"
-
-            # 还原
-            echo -e "\n⏪ Restoring from ${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}\n"
-            rm -rf "${BUILD_DIR}/chroot/etc/apt/"* || true
-            cp -a "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}/." "${BUILD_DIR}/chroot/etc/apt/" || true
-            ls -l "${BUILD_DIR}/chroot/etc/apt/" || true
-
-            # 最终确认
-            echo -e "\n 🧐 Checking for substituted  PPA ... \n"
-            checkapt "${BUILD_DIR}/chroot/etc/apt"
-        }
-
-        {
-        mount -l
-        # 1. 查出身：看看它是哪种文件系统挂载的
-        mount | grep "${BUILD_DIR}" || echo "BUILD_DIR is not a direct mount point (maybe part of rootfs)."
-
-        # 2. 查深度：看看 chroot 目录下是否有隐藏的挂载（最危险的情况）
-        echo "Checking for hidden mounts inside chroot..."
-        mount | grep "${BUILD_DIR}/chroot" || echo "No sub-mounts detected in chroot."
-
-        # 3. 查文件系统类型
-        df -T "${BUILD_DIR}"
-
-        # 4. 查 OverlayFS (这是内鬼常去的地方)
-        if mount | grep -q "overlay"; then
-            echo "⚠️ ALERT: OverlayFS detected! This might explain the 'sync' delay or missing files in tar."
-        fi
-
-        echo "--- Is chroot itself a mount? ---"
-        mountpoint "${BUILD_DIR}/chroot" || echo "chroot is a regular directory (not a mountpoint)."
-
-        # 3. 检查文件系统指纹
-        echo "--- File System Type for chroot: ---"
-        df -hT "${BUILD_DIR}/chroot"
-
-        # 4. 查 inode 和设备号 (对比 /etc/apt 与备份目录)
-        echo "--- Inode and Device Audit: ---"
-        stat "${BUILD_DIR}/chroot/etc/apt"
-        stat "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}"
-        }
-        
-        echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
-
-        sync
-
-        tar -cJf ${FINAL_TAR_PATH} \
-            -p -C "${BUILD_DIR}/chroot" . \
-            --sort=name \
-            --xattrs
-
-        TMP_CHROOT="./image"
-        ls -l "${FINAL_TAR_PATH}"
-        mkdir -p $TMP_CHROOT
-        tar -xpI 'xz -d -T0' -f "${FINAL_TAR_PATH}" -C ${TMP_CHROOT}
-
-        {
-            echo "iist directory for ${FINAL_TAR_PATH}"
-            ls -lh ${FINAL_TAR_PATH}
-
-            echo -e "\n------ 🧐 Checking for PPA exist ------ \n"
-            checkapt "${TMP_CHROOT}/etc/apt"
-
-            echo -e "\n------ 🧐 Checking for PPA backup ${APT_BACKUP_PHYSICAL} ------ \n"
-            checkapt "${TMP_CHROOT}/${APT_BACKUP_PHYSICAL}"
-        }
-
 :<< "NOTES"
         EXCLUDE_DIRS=(
             # "var/lib/apt/lists/*"
@@ -432,6 +351,105 @@ NOTES
 }
 
 docker_run_prepare
+
+{
+    CHROOT_DIR=$(find "${BUILD_DIR}" -type d -name "chroot" -print -quit)
+    echo -e "CHROOT_DIR is $CHROOT_DIR"
+
+    # 路径存在性校验：不存在就报错退出，防止空跑
+    if [ -z "${CHROOT_DIR}" ]; then
+        echo "❌ ERROR: 在 ${BUILD_DIR} 下物理搜索失败，未找到 chroot 目录！" >&2
+        exit 1
+    fi
+
+    # 绝对化路径，确保变量稳固
+    CHROOT_DIR=$(readlink -f "${CHROOT_DIR}")
+    APT_BACKUP_PHYSICAL=".apt_shadow_backup"
+
+    checkapt() {
+        local path="$1"
+        echo -e "\n check $path \n"
+        ls -lh "$path/sources.list" || true
+        cat "$path/sources.list" || true
+
+        echo -e "\n check $path/sources.list.d/ \n"
+        ls -lh "$path/sources.list.d" || true
+        cat "$path/sources.list.d/"* || true
+    }
+
+    {
+        echo -e "\n 🧐 Checking for PPA wipeout... \n"
+        checkapt "$CHROOT_DIR/etc/apt"
+
+        # 还原
+        echo -e "\n⏪ Restoring from $CHROOT_DIR/${APT_BACKUP_PHYSICAL}\n"
+        rm -rf "$CHROOT_DIR/etc/apt/"* || true
+        cp -a "$CHROOT_DIR/${APT_BACKUP_PHYSICAL}/." "$CHROOT_DIR/etc/apt/" || true
+        ls -lh "$CHROOT_DIR/etc/apt/" || true
+
+        # 最终确认
+        echo -e "\n 🧐 Checking for substituted  PPA ... \n"
+        checkapt "$CHROOT_DIR/etc/apt"
+    }
+
+    {
+        mount -l
+        # 1. 查出身：看看它是哪种文件系统挂载的
+        mount | grep "${BUILD_DIR}" || echo "BUILD_DIR is not a direct mount point (maybe part of rootfs)."
+
+        # 2. 查深度：看看 chroot 目录下是否有隐藏的挂载（最危险的情况）
+        echo "Checking for hidden mounts inside chroot..."
+        mount | grep "$CHROOT_DIR" || echo "No sub-mounts detected in chroot."
+
+        # 3. 查文件系统类型
+        df -T "${BUILD_DIR}"
+
+        # 4. 查 OverlayFS (这是内鬼常去的地方)
+        if mount | grep -q "overlay"; then
+            echo "⚠️ ALERT: OverlayFS detected! This might explain the 'sync' delay or missing files in tar."
+        fi
+
+        echo "--- Is chroot itself a mount? ---"
+        mountpoint "$CHROOT_DIR" || echo "chroot is a regular directory (not a mountpoint)."
+
+        # 3. 检查文件系统指纹
+        echo "--- File System Type for chroot: ---"
+        df -hT "$CHROOT_DIR"
+
+        # 4. 查 inode 和设备号 (对比 /etc/apt 与备份目录)
+        echo "--- Inode and Device Audit: ---"
+        stat "$CHROOT_DIR/etc/apt"
+        stat "$CHROOT_DIR/${APT_BACKUP_PHYSICAL}"
+    }
+
+    echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
+
+    FINAL_TAR_PATH="${BUILD_DIR}/ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz"
+
+    sync
+
+    tar -cJf "${FINAL_TAR_PATH}" \
+        -p -C "$CHROOT_DIR" . \
+        --sort=name \
+        --xattrs
+
+    TMP_CHROOT="./image"
+    ls -l "${FINAL_TAR_PATH}"
+    mkdir -p "$TMP_CHROOT"
+    tar -xpI 'xz -d -T0' -f "${FINAL_TAR_PATH}" -C "${TMP_CHROOT}"
+
+    {
+        echo "list directory for ${FINAL_TAR_PATH}"
+        ls -lh "${FINAL_TAR_PATH}"
+
+        echo -e "\n------ 🧐 Checking for PPA exist ------ \n"
+        checkapt "${TMP_CHROOT}/etc/apt"
+
+        echo -e "\n------ 🧐 Checking for PPA backup ${APT_BACKUP_PHYSICAL} ------ \n"
+        checkapt "${TMP_CHROOT}/${APT_BACKUP_PHYSICAL}"
+    }
+}
+
 
 # Host verification
 set +x
