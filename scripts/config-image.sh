@@ -127,8 +127,6 @@ trap 'teardown_mountpoint "$chroot_dir"' EXIT INT TERM HUP QUIT
 rm -rf ${chroot_dir} && mkdir -p ${chroot_dir}
 tar -xpI 'xz -d -T0' -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz" -C ${chroot_dir}
 
-setup_mountpoint $chroot_dir
-
 {
   echo -e "\n identity $chroot_dir/.apt_shadow_backup \n"
   ls -lh "$chroot_dir/.apt_shadow_backup" || true
@@ -147,6 +145,8 @@ setup_mountpoint $chroot_dir
   checkapt "$chroot_dir/.apt_shadow_backup"
   checkapt "$chroot_dir/etc/apt"
 }
+
+setup_mountpoint $chroot_dir
 
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
 #configure_apt_sources "$chroot_dir" "${SUITE}"
