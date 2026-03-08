@@ -299,13 +299,20 @@ EOF
             wait $MONITOR_PID || true
         fi
 
+        checkapt(){
+            local path="$1"
+            echo -e "\n check $path \n"
+            ls -lh  "$path/sources.list" || true
+            cat "$path/sources.list" || true
+
+            echo -e "\n check $path/sources.list.d/ \n"
+            ls -lh "$path/sources.list.d" || true
+            cat "$path/sources.list.d/"* || true
+         }
+
         {
             echo -e "\n 🧐 Checking for PPA wipeout... \n"
-            echo -e "\n previous ${BUILD_DIR}/chroot/etc/apt/sources.list \n"
-            cat "${BUILD_DIR}/chroot/etc/apt/sources.list" || true
-            
-            echo -e "\n previous ${BUILD_DIR}/chroot/etc/apt/sources.list.d/ \n"
-            cat "${BUILD_DIR}/chroot/etc/apt/sources.list.d/"* || true
+            checkapt "${BUILD_DIR}/chroot/etc/apt"
 
             # 还原
             echo -e "\n⏪ Restoring from ${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}\n"
@@ -314,11 +321,8 @@ EOF
             ls -l "${BUILD_DIR}/chroot/etc/apt/" || true
 
             # 最终确认
-            echo -e "\n restored ${BUILD_DIR}/chroot/etc/apt/sources.list \n"
-            cat "${BUILD_DIR}/chroot/etc/apt/sources.list" || true
-
-            echo -e "\n restored ${BUILD_DIR}/chroot/etc/apt/sources.list.d/ \n"
-            cat "${BUILD_DIR}/chroot/etc/apt/sources.list.d/"* || true
+            echo -e "\n 🧐 Checking for substituted  PPA ... \n"
+            checkapt "${BUILD_DIR}/chroot/etc/apt"
         }
 
         {
@@ -353,6 +357,28 @@ EOF
         
         echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
 
+        sync
+
+        tar -cJf ${FINAL_TAR_PATH} \
+            -p -C "${BUILD_DIR}/chroot" . \
+            --sort=name \
+            --xattrs
+
+        TMP_CHROOT="./image"
+        ls -l "${FINAL_TAR_PATH}"
+        tar -xpI 'xz -d -T0' -f "${FINAL_TAR_PATH}" -C ${TMP_CHROOT}
+
+        {
+            echo "iist directory for ${FINAL_TAR_PATH}"
+            ls -lh ${FINAL_TAR_PATH}
+
+            echo -e "\n------ 🧐 Checking for PPA exist ------ \n"
+            checkapt "${FINAL_TAR_PATH}/etc/apt"
+
+            echo -e "\n------ 🧐 Checking for PPA backup ${APT_BACKUP_PHYSICAL} ------ \n"
+            checkapt "${FINAL_TAR_PATH}/${APT_BACKUP_PHYSICAL}"
+        }
+
 :<< "NOTES"
         EXCLUDE_DIRS=(
             # "var/lib/apt/lists/*"
@@ -376,14 +402,7 @@ EOF
             . \
             | xz -9 -e -T0 --memlimit=80% --block-size=128MiB > "${FINAL_TAR_PATH}"
 NOTES
-
-        sync
-
-        tar -cJf ${FINAL_TAR_PATH} \
-            -p -C "${BUILD_DIR}/chroot" . \
-            --sort=name \
-            --xattrs
-
+        
         # Verify artifact
         echo -e "\n🔍 Verify artifact:"
         ls -lh ${FINAL_TAR_PATH}
