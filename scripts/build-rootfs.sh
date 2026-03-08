@@ -376,6 +376,8 @@ EOF
             | xz -9 -e -T0 --memlimit=80% --block-size=128MiB > "${FINAL_TAR_PATH}"
 NOTES
 
+        sync
+
         tar -cJf ${FINAL_TAR_PATH} \
             -p -C "${BUILD_DIR}/chroot" . \
             --sort=name \
@@ -400,7 +402,6 @@ NOTES
         -e FLAVOR="${FLAVOR}" \
         -e SUITE="${SUITE}" \
         -v "${HOST_ROOTFS_ROOT}:/rootfs-build" \
-        -v "${BUILD_DIR}:/rootfs-build/build" \
         -v "${CONTAINER_SCRIPT}:/tmp/run-script.sh:ro" \
         "${DOCKER_IMAGE}" \
         /bin/bash /tmp/run-script.sh
