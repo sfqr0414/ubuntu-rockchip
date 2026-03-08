@@ -131,12 +131,12 @@ setup_mountpoint $chroot_dir
 
 {
   echo -e "\n check $chroot_dir/etc/apt/sources.list \n"
-  ls -lh  $chroot_dir/etc/apt/sources.list || true
+  ls -lh  "$chroot_dir/etc/apt/sources.list" || true
   cat "$chroot_dir/etc/apt/sources.list" || true
 
   echo -e "\n check $chroot_dir/etc/apt/sources.list.d/ \n"
-  ls -lh $chroot_dir/etc/apt/sources.list.d || true
-  cat "$chroot_dir/etc/apt/sources.list.d/*" || true
+  ls -lh "$chroot_dir/etc/apt/sources.list.d" || true
+  cat "$chroot_dir/etc/apt/sources.list.d/"* || true
 }
 
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
