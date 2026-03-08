@@ -130,19 +130,22 @@ EOF
 }
 
 {
-# 2. 验证当前状态
-echo "🔍 Tweaks: Verifying APT state before backup..."
-cat /etc/apt/sources.list || true
-ls -l /etc/apt/sources.list.d/ || true
-cat /etc/apt/sources.list.d/* || true
+    # 2. 验证当前状态
+    echo "🔍 Tweaks: Verifying APT state before backup..."
+    cat /etc/apt/sources.list || true
+    ls -l /etc/apt/sources.list.d/ || true
+    cat /etc/apt/sources.list.d/* || true
 
-# 3. 🚨 核心战术：执行物理影子备份
-echo "📦 Backing up APT state to physical shadow directory..."
-host_call "cp -a /etc/apt/. /.apt_shadow_backup/"
+    # 3. 🚨 核心战术：执行物理影子备份
+    echo "📦 Backing up APT state to physical shadow directory..."
+    host_call "cp -a /etc/apt/* /.apt_shadow_backup/"
+
+    echo -e "\n ------------- List apt_shadow_backup contents... --------------\n"
+    host_call "ls -lh /.apt_shadow_backup/"
 }
 
 {
-echo "TERMINATE" > /.cmd_fifo
+    echo "TERMINATE" > /.cmd_fifo
 }
 set +x
 rm -- "$0"
