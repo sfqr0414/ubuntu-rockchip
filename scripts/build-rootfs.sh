@@ -366,6 +366,7 @@ EOF
 
         TMP_CHROOT="./image"
         ls -l "${FINAL_TAR_PATH}"
+        mkdir -p $TMP_CHROOT
         tar -xpI 'xz -d -T0' -f "${FINAL_TAR_PATH}" -C ${TMP_CHROOT}
 
         {
