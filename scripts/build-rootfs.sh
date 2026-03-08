@@ -337,6 +337,18 @@ EOF
         if mount | grep -q "overlay"; then
             echo "⚠️ ALERT: OverlayFS detected! This might explain the 'sync' delay or missing files in tar."
         fi
+
+        echo "--- Is chroot itself a mount? ---"
+        mountpoint "${BUILD_DIR}/chroot" || echo "chroot is a regular directory (not a mountpoint)."
+
+        # 3. 检查文件系统指纹
+        echo "--- File System Type for chroot: ---"
+        df -hT "${BUILD_DIR}/chroot"
+
+        # 4. 查 inode 和设备号 (对比 /etc/apt 与备份目录)
+        echo "--- Inode and Device Audit: ---"
+        stat "${BUILD_DIR}/chroot/etc/apt"
+        stat "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}"
         }
         
         echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
