@@ -235,6 +235,8 @@ EOF
         export PATH="/usr/local/bin:${PATH}"
         echo "✅ Installed debootstrap wrapper at /usr/local/bin/debootstrap (DEBOOTSTRAP_OPTS will be honored)"
 
+        APT_BACKUP_PHYSICAL="apt_shadow_backup"
+
         launch_messenger() {
             local base="$1"
             local FIFO="$base/.cmd_fifo"
@@ -267,6 +269,9 @@ EOF
                     chmod +x "${BUILD_DIR}/chroot/usr/bin/qemu-aarch64-static"
                     echo "✅ qemu copied to chroot"
 
+                    mkdir -p "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}"
+                    echo "✅ Created physical backup directory inside chroot"
+
                     # 2. 启动并脱离父进程的信使
                     ( launch_messenger "${BUILD_DIR}/chroot" ) & disown
 
@@ -293,6 +298,19 @@ EOF
         if ps -p $MONITOR_PID > /dev/null; then
             wait $MONITOR_PID || true
         fi
+
+        {
+            echo -e "\n 🧐 Checking for PPA wipeout... \n"
+            cat "${BUILD_DIR}/chroot/etc/apt/sources.list" || true
+
+            # 还原
+            echo -e "\n⏪ Restoring from ${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}\n"
+            rm -rf "${BUILD_DIR}/chroot/etc/apt/*" || true
+            cp -a "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}/." "${BUILD_DIR}/chroot/etc/apt/" || true
+
+            # 最终确认
+            cat "${BUILD_DIR}/chroot/etc/apt/sources.list" || true
+        }
         
         echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
 
