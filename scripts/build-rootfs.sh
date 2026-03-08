@@ -320,6 +320,24 @@ EOF
             echo -e "\n restored ${BUILD_DIR}/chroot/etc/apt/sources.list.d/ \n"
             cat "${BUILD_DIR}/chroot/etc/apt/sources.list.d/"* || true
         }
+
+        {
+        mount -l
+        # 1. 查出身：看看它是哪种文件系统挂载的
+        mount | grep "${BUILD_DIR}" || echo "BUILD_DIR is not a direct mount point (maybe part of rootfs)."
+
+        # 2. 查深度：看看 chroot 目录下是否有隐藏的挂载（最危险的情况）
+        echo "Checking for hidden mounts inside chroot..."
+        mount | grep "${BUILD_DIR}/chroot" || echo "No sub-mounts detected in chroot."
+
+        # 3. 查文件系统类型
+        df -T "${BUILD_DIR}"
+
+        # 4. 查 OverlayFS (这是内鬼常去的地方)
+        if mount | grep -q "overlay"; then
+            echo "⚠️ ALERT: OverlayFS detected! This might explain the 'sync' delay or missing files in tar."
+        fi
+        }
         
         echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
 
