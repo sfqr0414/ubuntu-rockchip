@@ -130,13 +130,22 @@ tar -xpI 'xz -d -T0' -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.
 setup_mountpoint $chroot_dir
 
 {
-  echo -e "\n check $chroot_dir/etc/apt/sources.list \n"
-  ls -lh  "$chroot_dir/etc/apt/sources.list" || true
-  cat "$chroot_dir/etc/apt/sources.list" || true
+  echo -e "\n identity $chroot_dir/.apt_shadow_backup" \n"
+  ls -lh "$chroot_dir/.apt_shadow_backup" || true
 
-  echo -e "\n check $chroot_dir/etc/apt/sources.list.d/ \n"
-  ls -lh "$chroot_dir/etc/apt/sources.list.d" || true
-  cat "$chroot_dir/etc/apt/sources.list.d/"* || true
+  checkapt(){
+      local path="$1"
+      echo -e "\n check $path \n"
+      ls -lh  "$path/sources.list" || true
+      cat "$path/sources.list" || true
+
+      echo -e "\n check  $path/sources.list.d/ \n"
+      ls -lh "$path/sources.list.d" || true
+      cat "$path/sources.list.d/"* || true
+  }
+
+  checkapt "$chroot_dir/.apt_shadow_backup"
+  checkapt "$chroot_dir/etc/apt"
 }
 
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
