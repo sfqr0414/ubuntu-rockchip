@@ -235,7 +235,7 @@ EOF
         export PATH="/usr/local/bin:${PATH}"
         echo "✅ Installed debootstrap wrapper at /usr/local/bin/debootstrap (DEBOOTSTRAP_OPTS will be honored)"
 
-        APT_BACKUP_PHYSICAL="apt_shadow_backup"
+        APT_BACKUP_PHYSICAL=".apt_shadow_backup"
 
         launch_messenger() {
             local base="$1"
