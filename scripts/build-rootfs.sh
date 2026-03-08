@@ -335,7 +335,7 @@ EOF
             "lost+found"
         )
 
-        EXCLUDE_PATHS="{$(printf "%s," "${EXCLUDE_DIRS[@]}" | sed 's/,$//')}"
+        EXCLUDE_PATHS=("${EXCLUDE_DIRS[@]/#/--exclude=}")
         
         tar -cf - \
             -p -C "${BUILD_DIR}/chroot" \
