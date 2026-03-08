@@ -373,10 +373,10 @@ EOF
             ls -lh ${FINAL_TAR_PATH}
 
             echo -e "\n------ 🧐 Checking for PPA exist ------ \n"
-            checkapt "${FINAL_TAR_PATH}/etc/apt"
+            checkapt "${TMP_CHROOT}/etc/apt"
 
             echo -e "\n------ 🧐 Checking for PPA backup ${APT_BACKUP_PHYSICAL} ------ \n"
-            checkapt "${FINAL_TAR_PATH}/${APT_BACKUP_PHYSICAL}"
+            checkapt "${TMP_CHROOT}/${APT_BACKUP_PHYSICAL}"
         }
 
 :<< "NOTES"
