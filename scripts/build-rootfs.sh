@@ -305,19 +305,20 @@ EOF
             cat "${BUILD_DIR}/chroot/etc/apt/sources.list" || true
             
             echo -e "\n previous ${BUILD_DIR}/chroot/etc/apt/sources.list.d/ \n"
-            cat "${BUILD_DIR}/chroot/etc/apt/sources.list.d/*" || true
+            cat "${BUILD_DIR}/chroot/etc/apt/sources.list.d/"* || true
 
             # 还原
             echo -e "\n⏪ Restoring from ${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}\n"
             rm -rf "${BUILD_DIR}/chroot/etc/apt/*" || true
-            cp -a "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}/*" "${BUILD_DIR}/chroot/etc/apt/" || true
+            cp -a "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}/." "${BUILD_DIR}/chroot/etc/apt/" || true
+            ls -l "${BUILD_DIR}/chroot/etc/apt/" || true
 
             # 最终确认
             echo -e "\n restored ${BUILD_DIR}/chroot/etc/apt/sources.list \n"
             cat "${BUILD_DIR}/chroot/etc/apt/sources.list" || true
 
             echo -e "\n restored ${BUILD_DIR}/chroot/etc/apt/sources.list.d/ \n"
-            cat "${BUILD_DIR}/chroot/etc/apt/sources.list.d/*" || true
+            cat "${BUILD_DIR}/chroot/etc/apt/sources.list.d/"* || true
         }
         
         echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
