@@ -352,7 +352,7 @@ docker_run_prepare
 
 {
     set -x
-    CHROOT_DIR=$(find "${BUILD_DIR}" -maxdepth 2 -type d -name "chroot" -print -quit)
+    CHROOT_DIR=$(find "${BUILD_DIR}" -maxdepth 2 -type d -name "root" -print -quit)
     echo -e "CHROOT_DIR is $CHROOT_DIR"
 
     # 路径存在性校验：不存在就报错退出，防止空跑
@@ -363,7 +363,7 @@ docker_run_prepare
 
     # 绝对化路径，确保变量稳固
     CHROOT_DIR=$(readlink -f "${CHROOT_DIR}")
-    APT_BACKUP_PHYSICAL=".apt_shadow_backup"
+   # APT_BACKUP_PHYSICAL=".apt_shadow_backup"
 
     checkapt() {
         local path="$1"
@@ -376,6 +376,7 @@ docker_run_prepare
         cat "$path/sources.list.d/"* || true
     }
 
+:<< "NOTES"
     {
         echo -e "\n 🧐 Checking for PPA wipeout... \n"
         checkapt "$CHROOT_DIR/etc/apt"
@@ -390,6 +391,7 @@ docker_run_prepare
         echo -e "\n 🧐 Checking for substituted  PPA ... \n"
         checkapt "$CHROOT_DIR/etc/apt"
     }
+NOTES
 
 :<< "NOTES"
     {
@@ -427,7 +429,7 @@ NOTES
 
     FINAL_TAR_PATH="${BUILD_DIR}/ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz"
 
-    sync
+#    sync
 
 :<< "NOTES"
     {
