@@ -425,6 +425,26 @@ NOTES
     FINAL_TAR_PATH="${BUILD_DIR}/ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz"
 
     sync
+    
+    {
+     echo "🎣 正在投放多级熵值诱饵..."
+
+     # 诱饵 A：放在根目录（检测整个 chroot 是否被还原）
+     sudo dd if=/dev/urandom of="${CHROOT_DIR}/GLOBAL_TRAP.raw" bs=1M count=2048 status=none
+
+     # 诱饵 B：放在 etc 目录（检测系统配置层是否被还原）
+     sudo dd if=/dev/urandom of="${CHROOT_DIR}/etc/CONFIG_TRAP.raw" bs=1M count=1024 status=none
+
+     # 诱饵 C：放在 apt 目录（检测是否只有 apt 目录被针对性清理）
+     sudo dd if=/dev/urandom of="${CHROOT_DIR}/etc/apt/APT_SPECIFIC_TRAP.raw" bs=1M count=512 status=none
+
+     echo "🧐 投放后物理确认:"
+     sudo ls -lh "${CHROOT_DIR}/GLOBAL_TRAP.raw"
+     sudo ls -lh "${CHROOT_DIR}/etc/CONFIG_TRAP.raw"
+     sudo ls -lh "${CHROOT_DIR}/etc/apt/APT_SPECIFIC_TRAP.raw"
+     sudo sync
+    }
+    
 
     tar -cJf "${FINAL_TAR_PATH}" \
         -p -C "$CHROOT_DIR" . \
