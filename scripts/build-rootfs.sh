@@ -388,7 +388,7 @@ docker_run_prepare
         checkapt "$CHROOT_DIR/etc/apt"
     }
 
-<<: "NOTES"
+:<< "NOTES"
     {
         mount -l
         # 1. 查出身：看看它是哪种文件系统挂载的
