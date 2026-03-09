@@ -135,7 +135,8 @@ EOF
     cat /etc/apt/sources.list || true
     ls -l /etc/apt/sources.list.d/ || true
     cat /etc/apt/sources.list.d/* || true
-
+    
+:<<"NOTES"
     # 3. 🚨 核心战术：执行物理影子备份
     echo "📦 Backing up APT state to physical shadow directory..."
     host_call "cp -a /etc/apt/* /.apt_shadow_backup/"
@@ -153,6 +154,7 @@ EOF
     
     # 4. 再次刷盘，确保备份目录也已写入物理扇区
     host_call "sync || true"
+NOTES
 }
 
 {
