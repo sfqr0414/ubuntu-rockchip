@@ -349,7 +349,7 @@ docker_run_prepare
 
 {
     set -x
-    CHROOT_DIR=$(find "${BUILD_DIR}" -type d -name "chroot" -print -quit)
+    CHROOT_DIR=$(find "${BUILD_DIR}" -maxdepth 2 -type d -name "chroot" -print -quit)
     echo -e "CHROOT_DIR is $CHROOT_DIR"
 
     # 路径存在性校验：不存在就报错退出，防止空跑
