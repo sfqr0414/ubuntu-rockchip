@@ -425,7 +425,8 @@ NOTES
     FINAL_TAR_PATH="${BUILD_DIR}/ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz"
 
     sync
-    
+
+:<< "NOTES"
     {
      echo "🎣 正在投放多级熵值诱饵..."
 
@@ -444,8 +445,8 @@ NOTES
      sudo ls -lh "${CHROOT_DIR}/etc/apt/APT_SPECIFIC_TRAP.raw"
      sudo sync
     }
+"NOTES"
     
-
     tar -cJf "${FINAL_TAR_PATH}" \
         -p -C "$CHROOT_DIR" . \
         --sort=name \
