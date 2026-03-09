@@ -445,7 +445,7 @@ NOTES
      sudo ls -lh "${CHROOT_DIR}/etc/apt/APT_SPECIFIC_TRAP.raw"
      sudo sync
     }
-"NOTES"
+NOTES
     
     tar -cJf "${FINAL_TAR_PATH}" \
         -p -C "$CHROOT_DIR" . \
