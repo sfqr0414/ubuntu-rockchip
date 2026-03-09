@@ -352,7 +352,7 @@ docker_run_prepare
 
 {
     set -x
-    CHROOT_DIR=$(find "${BUILD_DIR}" -maxdepth 2 -type d -name "root" -print -quit)
+    CHROOT_DIR=$(find "${BUILD_DIR}" -maxdepth 1 -type d -name "root" -print -quit)
     echo -e "CHROOT_DIR is $CHROOT_DIR"
 
     # 路径存在性校验：不存在就报错退出，防止空跑
@@ -468,9 +468,12 @@ NOTES
 
         echo -e "\n------ 🧐 Checking for PPA exist ------ \n"
         checkapt "${TMP_CHROOT}/etc/apt"
-
+        
+:<< "NOTES"
         echo -e "\n------ 🧐 Checking for PPA backup ${APT_BACKUP_PHYSICAL} ------ \n"
         checkapt "${TMP_CHROOT}/${APT_BACKUP_PHYSICAL}"
+NOTES
+
     }
     set +x
 }
