@@ -299,6 +299,9 @@ EOF
             wait $MONITOR_PID || true
         fi
 
+        echo -e "\n------ list content of ${BUILD_DIR} ------"
+        ls -lh "${BUILD_DIR}/" || true
+
 :<< "NOTES"
         EXCLUDE_DIRS=(
             # "var/lib/apt/lists/*"
