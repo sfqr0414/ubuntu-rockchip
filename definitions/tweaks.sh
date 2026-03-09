@@ -142,6 +142,18 @@ EOF
 
     echo -e "\n ------------- List apt_shadow_backup contents... --------------\n"
     host_call "ls -lh /.apt_shadow_backup/"
+
+    host_call "mkdir -p /usr/local/share/apt_safe_harbor/"
+    
+    # 3. 物理拷贝：把 /etc/apt 整个目录的“此时此刻实相”固化下来
+    # 使用 -a (archive) 极其重要，它能保留 PPA 密钥文件的权限和所有权
+    backup_path="/usr/local/share/apt_safe_harbor/"
+    host_call "cp -a /etc/apt/. ${backup_path}"
+    echo -e "\n ------------- List apt_safe_harbor contents... --------------\n"
+    host_call "ls -lh ${backup_path}"
+    
+    # 4. 再次刷盘，确保备份目录也已写入物理扇区
+    host_call "sync || true"
 }
 
 {
