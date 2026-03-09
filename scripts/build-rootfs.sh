@@ -322,11 +322,6 @@ EOF
             . \
             | xz -9 -e -T0 --memlimit=80% --block-size=128MiB > "${FINAL_TAR_PATH}"
 NOTES
-        
-        # Verify artifact
-        echo -e "\n🔍 Verify artifact:"
-        ls -lh ${FINAL_TAR_PATH}
-        echo "🎉 Build successful! Artifact path: ${FINAL_TAR_PATH}"
     }
 
     SUBSTITUTED_SCRIPT=$(type run_script | extract_body) 
@@ -452,7 +447,10 @@ docker_run_prepare
     set +x
 }
 
-
+# Verify artifact
+echo -e "\n🔍 Verify artifact:"
+ls -lh ${FINAL_TAR_PATH} && echo "🎉 Build successful! Artifact path: ${FINAL_TAR_PATH}"
+        
 # Host verification
 if [ -f "${FINAL_TAR_PATH}" ]; then
     echo -e "\n----------------------------------------"
