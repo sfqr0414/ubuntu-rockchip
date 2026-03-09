@@ -353,6 +353,7 @@ NOTES
 docker_run_prepare
 
 {
+    set -x
     CHROOT_DIR=$(find "${BUILD_DIR}" -type d -name "chroot" -print -quit)
     echo -e "CHROOT_DIR is $CHROOT_DIR"
 
@@ -448,11 +449,11 @@ docker_run_prepare
         echo -e "\n------ 🧐 Checking for PPA backup ${APT_BACKUP_PHYSICAL} ------ \n"
         checkapt "${TMP_CHROOT}/${APT_BACKUP_PHYSICAL}"
     }
+    set +x
 }
 
 
 # Host verification
-set +x
 if [ -f "${FINAL_TAR_PATH}" ]; then
     echo -e "\n----------------------------------------"
     echo "🎉 Overall build succeeded!"
