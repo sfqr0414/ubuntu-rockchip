@@ -388,6 +388,7 @@ docker_run_prepare
         checkapt "$CHROOT_DIR/etc/apt"
     }
 
+<<: "NOTES"
     {
         mount -l
         # 1. 查出身：看看它是哪种文件系统挂载的
@@ -417,6 +418,7 @@ docker_run_prepare
         stat "$CHROOT_DIR/etc/apt"
         stat "$CHROOT_DIR/${APT_BACKUP_PHYSICAL}"
     }
+NOTES
 
     echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
 
