@@ -86,7 +86,7 @@ setup_mountpoint() {
         chown root:kmem /dev/mem
     fi
     mount dev-live -t devtmpfs "$mountpoint/dev"
-    mount devpts-live -t devpts -o gid=5,mode=620 "$mountpoint/dev/pts"
+    mount devpts-live -t devpts -o gid=5,mode=620,ptmxmode=000 "$mountpoint/dev/pts"
     mount proc-live -t proc "$mountpoint/proc"
     mount sysfs-live -t sysfs "$mountpoint/sys"
     mount securityfs -t securityfs "$mountpoint/sys/kernel/security"
