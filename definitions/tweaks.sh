@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 
 host_call() {
     local cmd="$1"
@@ -21,13 +20,13 @@ host_call() {
 }
 
 {
-    # 利用信使（宿主权限）强行补齐设备节点和挂载
+    # use host privileges to add missing devices and mounts
     host_call "mkdir -p /proc /sys /dev/pts"
     host_call "mount -t proc proc /proc"
     host_call "mount -t sysfs sysfs /sys"
     host_call "mount -t devpts devpts /dev/pts"
 
-    # 这一步是赢的核心：宿主有权创建真正的字符设备
+    # host can create the real /dev/null device
     host_call "rm -f /dev/null && mknod -m 666 /dev/null c 1 3"
 }
 
@@ -121,44 +120,16 @@ EOF
 }
 
 {
-    # 清理：必须在脚本结束前卸载，否则 ubuntu-image 拷贝会崩溃
+    # unmount now or ubuntu-image copy will fail
     host_call "umount -l /dev/pts || true"
     host_call "umount -l /sys || true"
     host_call "umount -l /proc || true"
-    # 别忘了删掉刚建的设备节点，防止拷贝工具报错
+    # delete the temporary /dev/null device
     host_call "rm -f /dev/null"
-}
-
-{
-    # 2. 验证当前状态
-    echo "🔍 Tweaks: Verifying APT state before backup..."
-    cat /etc/apt/sources.list || true
-    ls -l /etc/apt/sources.list.d/ || true
-    cat /etc/apt/sources.list.d/* || true
-    
-:<<"NOTES"
-    # 3. 🚨 核心战术：执行物理影子备份
-    echo "📦 Backing up APT state to physical shadow directory..."
-    host_call "cp -a /etc/apt/* /.apt_shadow_backup/"
-
-    echo -e "\n ------------- List apt_shadow_backup contents... --------------\n"
-    host_call "ls -lh /.apt_shadow_backup/"
-
-    # 3. 物理拷贝：把 /etc/apt 整个目录的“此时此刻实相”固化下来
-    # 使用 -a (archive) 极其重要，它能保留 PPA 密钥文件的权限和所有权
-    backup_path="/usr/local/share/apt_safe_harbor/"
-    host_call "mkdir -p ${backup_path}"
-    host_call "cp -a /etc/apt/. ${backup_path}"
-    echo -e "\n ------------- List apt_safe_harbor contents... --------------\n"
-    host_call "ls -lh ${backup_path}"
-    
-    # 4. 再次刷盘，确保备份目录也已写入物理扇区
-    host_call "sync || true"
-NOTES
 }
 
 {
     echo "TERMINATE" > /.cmd_fifo
 }
-set +x
+
 rm -- "$0"
