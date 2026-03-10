@@ -20,10 +20,10 @@ jobs:
       build_matrix: ${{ steps.build.outputs.build_matrix }}
       rootfs_matrix: ${{ steps.rootfs.outputs.rootfs_matrix }}
     steps:
-      - name: Checkout code
+      - name: 📁 Checkout source
         uses: actions/checkout@v4
 
-      - name: Create build matrix
+      - name: ⚙️ Create build matrix
         id: build
         run: |
           build_matrix=""
@@ -43,7 +43,7 @@ jobs:
             echo "build_matrix={\"include\":[${build_matrix::-1}]}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create rootfs matrix
+      - name: 🧩 Create rootfs matrix
         id: rootfs
         run: |
           rootfs_matrix=""
@@ -73,7 +73,7 @@ jobs:
       fail-fast: false
     timeout-minutes: 180
     steps:
-      - name: 🧹 彻底清理磁盘空间（解决No space left）
+      - name: 🧹 Cleanup workspace
         run: |
           sudo rm -rf /home/runner/actions-runner/cached/_diag/* || true
           sudo rm -rf /home/runner/_diag/* || true
@@ -86,10 +86,10 @@ jobs:
           sudo rm -rf /tmp/* /var/tmp/* || true
           df -h
 
-      - name: Checkout code
+      - name: 📁 Checkout source
         uses: actions/checkout@v4
 
-      - name: Debug - Env & Directory
+      - name: 🐞 Show environment
         run: |
           echo "Workspace: $GITHUB_WORKSPACE"
           echo "Matrix: suite=${{ matrix.suite }}, flavor=${{ matrix.flavor }}"
@@ -98,7 +98,7 @@ jobs:
           ls -la config/suites/
           df -h
 
-      - name: Set environment variables
+      - name: 🔧 Setup variables
         id: vars
         run: |
           source config/suites/${{ matrix.suite }}.sh || { echo "Error loading suite config"; exit 1; }
@@ -110,17 +110,17 @@ jobs:
           echo "rootfs_tar_name=$ROOTFS_TAR_NAME" >> $GITHUB_OUTPUT
           echo "rootfs_download_url=$ROOTFS_DOWNLOAD_URL" >> $GITHUB_OUTPUT
 
-      - name: Install GitHub CLI (if missing)
+      - name: 📦 Ensure GitHub CLI
         run: |
           if ! command -v gh &> /dev/null; then
             sudo apt update && sudo apt install -y gh
           fi
           gh --version
 
-      - name: Authenticate GitHub CLI
+      - name: 🔐 Login GitHub CLI
         run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
-      - name: Check if rootfs zip exists in remote Release
+      - name: 🔍 Verify rootfs zip on release
         id: check_remote_rootfs
         continue-on-error: true
         uses: sfqr0414/release-restore-zip@v1
@@ -131,7 +131,7 @@ jobs:
           output_dir: ${{ github.workspace }}/build
           github_token: ${{ github.token }}
         
-      - name: Download remote rootfs zip (if exists)
+      - name: ⬇️ Retrieve rootfs zip
         if: steps.check_remote_rootfs.outputs.status == 1
         run: |
           #mkdir -p ${{ github.workspace }}/build
@@ -140,7 +140,7 @@ jobs:
           #unzip -o ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_zip_name }} -d ${{ github.workspace }}/build/
           ls -la ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_tar_name }} || { echo "Unzip failed"; exit 1; }
 
-      - name: Install full build dependencies (only if remote rootfs not found)
+      - name: 📦 Install dependencies
         if: steps.check_remote_rootfs.outputs.status == 0
         shell: bash
         run: |
@@ -164,7 +164,7 @@ jobs:
           ls /usr/bin/qemu-aarch64-static
           update-binfmts --display qemu-aarch64
 
-      - name: Add execute permission to scripts (only if remote rootfs not found)
+      - name: 📝 Mark scripts executable
         if: steps.check_remote_rootfs.outputs.status == 0
         run: |
           chmod +x ./build.sh
@@ -172,7 +172,7 @@ jobs:
           ls -la ./build.sh
           ls -la ./scripts/build-rootfs.sh
 
-      - name: Create correct chroot/rootfs directories (only if remote rootfs not found)
+      - name: 🗂️ Prepare chroot/rootfs dirs
         if: steps.check_remote_rootfs.outputs.status == 0
         shell: bash
         run: |
@@ -182,21 +182,21 @@ jobs:
           sudo chmod 777 -R ${{ github.workspace }}/build/rootfs
           ls -la ${{ github.workspace }}/build/
 
-      - name: Build rootfs (only if remote rootfs not found)
+      - name: 🛠️ Run rootfs build
         if: steps.check_remote_rootfs.outputs.status == 0
         shell: bash
         run: |
           cd ${{ github.workspace }}
           sudo bash ./build.sh --suite=${{ matrix.suite }} --flavor=${{ matrix.flavor }} --rootfs-only 2>&1 | tee build-rootfs.log
 
-      - name: Save build log (debug)
+      - name: 💾 Upload build log
         uses: actions/upload-artifact@v4.3.3
         with:
           name: rootfs-build-log-${{ matrix.suite }}-${{ matrix.flavor }}
           path: ${{ github.workspace }}/build-rootfs.log
           if-no-files-found: warn
 
-      - name: Debug - Check rootfs file
+      - name: 🧐 Verify rootfs file
         run: |
           TARGET_FILE="${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_tar_name }}"
           if [ -f "$TARGET_FILE" ]; then
@@ -208,17 +208,17 @@ jobs:
             exit 1
           fi
 
-      - name: Cache Rootfs
+      - name: 🗃️ Cache generated rootfs
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/build/${{ steps.vars.outputs.rootfs_tar_name }}
-          key: rootfs-${{ matrix.suite }}-${{ matrix.flavor }}-${{ hashFiles('config/suites/*.sh', 'config/flavors/*.sh') }}
+          key: rootfs-${{ matrix.suite }}-${{ matrix.flavor }}-${{ github.sha }}
           restore-keys: |
             rootfs-${{ matrix.suite }}-${{ matrix.flavor }}-
           enableCrossOsArchive: true
           save-always: false
 
-      - name: Upload rootfs artifact
+      - name: 🚀 Upload rootfs artifact
         uses: actions/upload-artifact@v4.3.3
         with:
           name: ${{ env.ROOTFS_FILE_PREFIX }}-${{ steps.vars.outputs.suite_version }}-preinstalled-${{ matrix.flavor }}-${{ env.ROOTFS_ARCH }}-rootfs
@@ -227,14 +227,13 @@ jobs:
           compression-level: 6
           overwrite: false
 
-      # 新增：打包并上传Rootfs到Release
-      - name: Package rootfs tar.xz to zip (for Release upload)
+      - name: 📦 Zip rootfs tar
         if: steps.check_remote_rootfs.outputs.status == 0
         run: |
           cd ${{ github.workspace }}/build
           zip -r ${{ steps.vars.outputs.rootfs_zip_name }} ${{ steps.vars.outputs.rootfs_tar_name }}
 
-      - name: Upload rootfs zip to GitHub Release
+      - name: 🚀 Publish rootfs zip
         if: steps.check_remote_rootfs.outputs.status == 0 && env.GITHUB_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -244,7 +243,7 @@ jobs:
           release_tag: ${{ env.RELEASE_TAG }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
     
-      - name: 🧹 清理rootfs临时构建文件（释放空间）
+      - name: 🧹 Cleanup rootfs temp files
         run: |
           sudo rm -rf ${{ github.workspace }}/build/chroot || true
           sudo rm -rf ${{ github.workspace }}/build/rootfs || true
@@ -260,7 +259,7 @@ jobs:
       fail-fast: false
     timeout-minutes: 180
     steps:
-      - name: 🧹 彻底清理磁盘空间（解决No space left）
+      - name: 🧹 Cleanup workspace
         run: |
           sudo rm -rf /home/runner/actions-runner/cached/_diag/* || true
           sudo rm -rf /home/runner/_diag/* || true
@@ -273,10 +272,10 @@ jobs:
           sudo rm -rf /tmp/* /var/tmp/* || true
           df -h
 
-      - name: Checkout code
+      - name: 📁 Checkout source
         uses: actions/checkout@v4
 
-      - name: Debug - Env & Directory
+      - name: 🐞 Show environment
         run: |
           echo "Workspace: $GITHUB_WORKSPACE"
           echo "Matrix: board=${{ matrix.board }}, suite=${{ matrix.suite }}, flavor=${{ matrix.flavor }}"
@@ -285,68 +284,43 @@ jobs:
           ls -la config/boards/
           df -h
 
-      - name: Set environment variables
+      - name: 🔧 Setup variables
         id: vars
         run: |
           source config/suites/${{ matrix.suite }}.sh || { echo "Error loading suite config"; exit 1; }
           echo "suite_version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
-          # ========== 修复1：先定义DEB_ZIP_NAME，再拼接完整URL ==========
           DEB_ZIP_NAME="deb-packages-${{ matrix.board }}-${{ matrix.suite }}.zip"
           echo "deb_zip_name=$DEB_ZIP_NAME" >> $GITHUB_OUTPUT
-          DEB_DOWNLOAD_URL="https://github.com/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/releases/download/${{ env.RELEASE_TAG }}/${DEB_ZIP_NAME}"
-          echo "deb_download_url=$DEB_DOWNLOAD_URL" >> $GITHUB_OUTPUT
+          # DEB_DOWNLOAD_URL="https://github.com/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/releases/download/${{ env.RELEASE_TAG }}/${DEB_ZIP_NAME}"
+          # echo "deb_download_url=$DEB_DOWNLOAD_URL" >> $GITHUB_OUTPUT
 
-      - name: Install GitHub CLI (if missing)
+      - name: 📦 Ensure GitHub CLI
         run: |
           if ! command -v gh &> /dev/null; then
             sudo apt update && sudo apt install -y gh
           fi
           gh --version
 
-      - name: Authenticate GitHub CLI
+      - name: 🔐 Login GitHub CLI
         run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
-      - name: Check if DEB ZIP exists in remote Release
+      - name: 🔍 Verify deb zip on release
         id: check_remote_deb
         continue-on-error: true
-        run: |
-          if gh release view ${{ env.RELEASE_TAG }} --repo ${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}; then
-            gh release view ${{ env.RELEASE_TAG }} \
-              --repo ${{ env.REPO_OWNER }}/${{ env.REPO_NAME }} \
-              --json assets \
-              --jq ".assets[] | select(.name == \"${{ steps.vars.outputs.deb_zip_name }}\") | .name" > /tmp/deb_asset_check.txt
-          else
-            echo "Release ${{ env.RELEASE_TAG }} not found" > /tmp/deb_asset_check.txt
-          fi
-          if [ -s /tmp/deb_asset_check.txt ] && ! grep -q "not found" /tmp/deb_asset_check.txt; then
-            echo "✅ Found remote deb zip"
-            echo "deb_remote_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Remote deb zip not found or release missing"
-            echo "deb_remote_exists=false" >> $GITHUB_OUTPUT
-          fi
+        uses: sfqr0414/release-restore-zip@v1
+        with:
+          release_tag: ${{ env.RELEASE_TAG }}
+          zip_name: ${{ steps.vars.outputs.deb_zip_name }}
+          unzip: true
+          output_dir: ${{ github.workspace }}/build
+          github_token: ${{ github.token }}
 
-      - name: Download remote DEB zip (if exists)
-        if: steps.check_remote_deb.outputs.deb_remote_exists == 'true'
+      - name: 🧾 Validate deb unzip
+        if: steps.check_remote_deb.outputs.status == 1
         run: |
-          mkdir -p ${{ github.workspace }}/build
-          # ========== 修复2：wget添加容错，避免404直接退出 ==========
-          wget -O ${{ github.workspace }}/build/${{ steps.vars.outputs.deb_zip_name }} ${{ steps.vars.outputs.deb_download_url }} || true
-          # ========== 修复3：校验下载文件是否存在且有效 ==========
-          if [ ! -f "${{ github.workspace }}/build/${{ steps.vars.outputs.deb_zip_name }}" ] || [ ! -s "${{ github.workspace }}/build/${{ steps.vars.outputs.deb_zip_name }}" ]; then
-            echo "⚠️ DEB包下载失败/文件为空，跳过解压"
-            exit 0
-          fi
-          ls -la ${{ github.workspace }}/build/${{ steps.vars.outputs.deb_zip_name }}
-          # ========== 修复4：解压前校验zip完整性 ==========
-          if ! unzip -t ${{ github.workspace }}/build/${{ steps.vars.outputs.deb_zip_name }} &> /dev/null; then
-            echo "⚠️ DEB包zip损坏，跳过解压"
-            exit 0
-          fi
-          unzip -o ${{ github.workspace }}/build/${{ steps.vars.outputs.deb_zip_name }} -d ${{ github.workspace }}/build/
           ls -la ${{ github.workspace }}/build/*.deb || { echo "Unzip failed"; exit 1; }
 
-      - name: Install full build dependencies
+      - name: 📦 Install build dependencies
         shell: bash
         run: |
           dpkg -l | grep -q firefox && sudo apt-mark hold firefox
@@ -360,19 +334,18 @@ jobs:
             fdisk parted dosfstools uuid-runtime rsync kmod \
             gcc-aarch64-linux-gnu
 
-      - name: Cache Deb packages
+      - name: 🗃️ Cache deb packages
         uses: actions/cache@v3
         with:
           path: |
             ${{ github.workspace }}/build/*.deb
             /var/cache/apt/archives/*.deb
-          key: ${{ matrix.board }}-${{ matrix.suite }}-deb-cache-${{ hashFiles('config/boards/*.sh', 'config/suites/*.sh') }}
-          restore-keys: |
+          key: ${{ matrix.board }}-${{ matrix.suite }}-deb-cache-${{ github.sha }}
             ${{ matrix.board }}-${{ matrix.suite }}-deb-cache-
           enableCrossOsArchive: true
           save-always: false
 
-      - name: Create correct directories
+      - name: 🗂️ Prepare build directories
         shell: bash
         run: |
           mkdir -p ${{ github.workspace }}/images
@@ -383,31 +356,31 @@ jobs:
           sudo chmod 777 -R ${{ github.workspace }}/build/rootfs
           ls -la ${{ github.workspace }}/build/
 
-      - name: Restore Rootfs Cache
+      - name: ♻️ Restore rootfs cache
         uses: actions/cache/restore@v3
         with:
           path: ${{ github.workspace }}/build/${{ env.ROOTFS_FILE_PREFIX }}-${{ steps.vars.outputs.suite_version }}-preinstalled-${{ matrix.flavor }}-${{ env.ROOTFS_ARCH }}.rootfs.tar.xz
-          key: rootfs-${{ matrix.suite }}-${{ matrix.flavor }}-${{ hashFiles('config/suites/*.sh', 'config/flavors/*.sh') }}
+          key: rootfs-${{ matrix.suite }}-${{ matrix.flavor }}-${{ github.sha }}
 
-      - name: Cache Kernel Build
+      - name: 🗃️ Cache kernel build
         uses: actions/cache@v3
         with:
           path: |
             ${{ github.workspace }}/build/kernel
             ${{ github.workspace }}/build/modules
-          key: kernel-${{ matrix.board }}-${{ matrix.suite }}-${{ hashFiles('config/boards/*.sh', 'scripts/build-kernel.sh') }}
+          key: kernel-${{ matrix.board }}-${{ matrix.suite }}-${{ github.sha }}
           restore-keys: |
             kernel-${{ matrix.board }}-${{ matrix.suite }}-
           enableCrossOsArchive: true
           save-always: false
 
-      - name: Build image
+      - name: 🏗️ Execute image build
         shell: bash
         run: |
           cd ${{ github.workspace }}
           sudo bash ./build.sh --board=${{ matrix.board }} --suite=${{ matrix.suite }} --flavor=${{ matrix.flavor }} 2>&1 | tee build-image.log
 
-      - name: Make deb-packages zip
+      - name: 📦 Package debs
         if: steps.check_remote_deb.outputs.deb_remote_exists != 'true'
         run: |
           set -e
@@ -416,17 +389,17 @@ jobs:
           zip ${{ github.workspace }}/releases/deb-packages-${{ matrix.board }}-${{ matrix.suite }}.zip ./*.deb
           ls -lh ${{ github.workspace }}/releases/
 
-      - name: Upload deb-packages zip to Release
-        if: steps.check_remote_deb.outputs.deb_remote_exists != 'true' && env.GITHUB_TOKEN != ''
+      - name: 🚀 Publish deb packages
+        if: steps.check_remote_deb.outputs.status == 0 && env.GITHUB_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ env.RELEASE_TAG }} \
-            ${{ github.workspace }}/releases/deb-packages-${{ matrix.board }}-${{ matrix.suite }}.zip \
-            --repo ${{ env.REPO_OWNER }}/${{ env.REPO_NAME }} \
-            --clobber
+        uses: sfqr0414/release-upload-zip@v1
+        with:
+          zip_path: ${{ github.workspace }}/releases/deb-packages-${{ matrix.board }}-${{ matrix.suite }}.zip
+          release_tag: ${{ env.RELEASE_TAG }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Save build log (debug)
+      - name: 💾 Upload build log
         if: always()
         uses: actions/upload-artifact@v4.3.3
         with:
@@ -434,13 +407,13 @@ jobs:
           path: ${{ github.workspace }}/build-image.log
           if-no-files-found: warn
 
-      - name: Debug - Check image file generation
+      - name: 🧐 Inspect image output
         run: |
           echo "=== Images directory contents ==="
           ls -la ${{ github.workspace }}/images/ || echo "Images directory not found"
           ls -la ${{ github.workspace }}/build/
 
-      - name: Upload image artifact
+      - name: 🚀 Upload image artifact
         uses: actions/upload-artifact@v4.3.3
         with:
           name: ${{ env.ROOTFS_FILE_PREFIX }}-${{ steps.vars.outputs.suite_version }}-preinstalled-${{ matrix.flavor }}-${{ env.ROOTFS_ARCH }}-${{ matrix.board }}
@@ -452,7 +425,7 @@ jobs:
           compression-level: 6
           overwrite: false
 
-      - name: 🧹 清理构建产物（释放空间）
+      - name: 🧹 Cleanup build artifacts
         shell: bash
         run: |
           sync && sudo rm -rf ${{ github.workspace }}/images/ ${{ github.workspace }}/build/ && sync
