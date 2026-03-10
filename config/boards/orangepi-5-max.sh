@@ -15,17 +15,19 @@ function config_image_hook__orangepi-5-max() {
     local overlay="$2"
     local suite="$3"
 
+:<<"NOTES"
     {
-    echo "--- [DEBUG] 当前 rootfs 的所有软件源 ---"
-    [ -f "${rootfs}/etc/apt/sources.list" ] && cat "${rootfs}/etc/apt/sources.list" || true
-    ls -F "${rootfs}/etc/apt/sources.list.d/" 2>/dev/null || true
-    find "${rootfs}/etc/apt/sources.list.d/" -type f -name "*.list" -exec echo "File: {}" \; -exec cat {} \; 2>/dev/null || true
-    echo "---------------------------------------"
-    chroot "${rootfs}" dpkg --print-architecture 
+     echo "--- [DEBUG] 当前 rootfs 的所有软件源 ---"
+     [ -f "${rootfs}/etc/apt/sources.list" ] && cat "${rootfs}/etc/apt/sources.list" || true
+     ls -F "${rootfs}/etc/apt/sources.list.d/" 2>/dev/null || true
+     find "${rootfs}/etc/apt/sources.list.d/" -type f -name "*.list" -exec echo "File: {}" \; -exec cat {} \; 2>/dev/null || true
+     echo "---------------------------------------"
+     chroot "${rootfs}" dpkg --print-architecture 
     }
+NOTES
 
     if [ "${suite}" == "noble" ]; then
-        chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg dirmngr
+       #chroot "${rootfs}" apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg dirmngr
 
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip
         chroot "${rootfs}" add-apt-repository -y ppa:jjriek/rockchip-multimedia
@@ -40,7 +42,7 @@ function config_image_hook__orangepi-5-max() {
             "libv4l-rkmpp"
             "gstreamer1.0-rockchip1"
             "camera-engine-rkaiq-rk3588"
-            "bcmdhd-sdio-dkms"
+            #"bcmdhd-sdio-dkms"
         )
 
         for pkg in "${packages[@]}"; do
@@ -50,12 +52,15 @@ function config_image_hook__orangepi-5-max() {
             echo "🚀 正在安装: ${pkg}"
             chroot "${rootfs}" apt-get install -y "${pkg}"
         done
-        
-    else
-    #if [ "TRUE" ]; then
+
+        chroot "${rootfs}" apt-get -y install wiringpi-opi libwiringpi2-opi libwiringpi-opi-dev
+        echo "BOARD=orangepi5max" > "${rootfs}/etc/orangepi-release"
+    fi
+    #else
+    if [ "TRUE" ]; then
         #chroot "${rootfs}" apt-get dist-upgrade -y
         DOWNLOAD_URL="https://github.com/sfqr0414/test_action/releases/download/repo"
-        DOWNLOAD_FILES=(#"armbian-firmware-gpu-panthor.deb" \
+        DOWNLOAD_FILES=("armbian-firmware-gpu-panthor.deb" \
                         "armbian-firmware-wifi-ap6275p.deb" \
                         "bcmdhd-sdio-dkms_101.10.591.52.27-6_all.deb")
 
@@ -78,7 +83,7 @@ function config_image_hook__orangepi-5-max() {
                 return 1
             fi
            
-            chroot "${rootfs}" apt install -y "/tmp/${file}"
+            chroot "${rootfs}" apt install -y "/tmp/${file}" || true
         done
     fi
     return 0
