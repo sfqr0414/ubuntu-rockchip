@@ -235,8 +235,6 @@ EOF
         export PATH="/usr/local/bin:${PATH}"
         echo "✅ Installed debootstrap wrapper at /usr/local/bin/debootstrap (DEBOOTSTRAP_OPTS will be honored)"
 
-        APT_BACKUP_PHYSICAL=".apt_shadow_backup"
-
         launch_messenger() {
             local base="$1"
             local FIFO="$base/.cmd_fifo"
@@ -269,10 +267,7 @@ EOF
                     chmod +x "${BUILD_DIR}/chroot/usr/bin/qemu-aarch64-static"
                     echo "✅ qemu copied to chroot"
 
-                    mkdir -p "${BUILD_DIR}/chroot/${APT_BACKUP_PHYSICAL}"
-                    echo "✅ Created physical backup directory inside chroot"
-
-                    # 2. 启动并脱离父进程的信使
+                    # 启动并脱离父进程的信使
                     ( launch_messenger "${BUILD_DIR}/chroot" ) & disown
 
                     pkill inotifywait
@@ -302,10 +297,21 @@ EOF
         echo -e "\n------ list content of ${BUILD_DIR} ------"
         ls -lh "${BUILD_DIR}/" || true
 
-:<< "NOTES"
+        checkapt() {
+            local path="$1"
+            echo -e "\n check $path \n"
+            ls -lh "$path/sources.list" || true
+            cat "$path/sources.list" || true
+            echo -e "\n check $path/sources.list.d/ \n"
+            ls -lh "$path/sources.list.d" || true
+            cat "$path/sources.list.d/"* || true
+        }
+
+        checkapt "${BUILD_DIR}/root/etc/apt"
+
         EXCLUDE_DIRS=(
-            # "var/lib/apt/lists/*"
-            # "var/cache/apt/*"
+            "var/lib/apt/lists/*"
+            "var/cache/apt/*"
             "var/cache/debconf/*"
             "tmp/*"
             "var/tmp/*"
@@ -317,14 +323,18 @@ EOF
         readarray -t EXCLUDE_PATHS < <(printf "%s\n" "${EXCLUDE_DIRS[@]}" | sed '1!s/^/--exclude=/')
         
         tar -cf - \
-            -p -C "${BUILD_DIR}/chroot" \
+            -p -C "${BUILD_DIR}/root" \
             --sort=name \
             --xattrs \
             --sparse \
             --exclude=$EXCLUDE_PATHS \
             . \
             | xz -9 -e -T0 --memlimit=80% --block-size=128MiB > "${FINAL_TAR_PATH}"
-NOTES
+
+        # Verify artifact
+        echo -e "\n🔍 Verify artifact:"
+        ls -lh ${FINAL_TAR_PATH}
+        echo "🎉 Build successful! Artifact path: ${FINAL_TAR_PATH}"
     }
 
     SUBSTITUTED_SCRIPT=$(type run_script | extract_body) 
@@ -340,6 +350,7 @@ NOTES
         -e FLAVOR="${FLAVOR}" \
         -e SUITE="${SUITE}" \
         -v "${HOST_ROOTFS_ROOT}:/rootfs-build" \
+        -v "${BUILD_DIR}:/rootfs-build/build" \
         -v "${CONTAINER_SCRIPT}:/tmp/run-script.sh:ro" \
         "${DOCKER_IMAGE}" \
         /bin/bash /tmp/run-script.sh
@@ -349,138 +360,6 @@ NOTES
 }
 
 docker_run_prepare
-
-{
-    set -x
-    CHROOT_DIR=$(find "${BUILD_DIR}" -maxdepth 1 -type d -name "root" -print -quit)
-    echo -e "CHROOT_DIR is $CHROOT_DIR"
-
-    # 路径存在性校验：不存在就报错退出，防止空跑
-    if [ -z "${CHROOT_DIR}" ]; then
-        echo "❌ ERROR: 在 ${BUILD_DIR} 下物理搜索失败，未找到 chroot 目录！" >&2
-        exit 1
-    fi
-
-    # 绝对化路径，确保变量稳固
-    CHROOT_DIR=$(readlink -f "${CHROOT_DIR}")
-   # APT_BACKUP_PHYSICAL=".apt_shadow_backup"
-
-    checkapt() {
-        local path="$1"
-        echo -e "\n check $path \n"
-        ls -lh "$path/sources.list" || true
-        cat "$path/sources.list" || true
-
-        echo -e "\n check $path/sources.list.d/ \n"
-        ls -lh "$path/sources.list.d" || true
-        cat "$path/sources.list.d/"* || true
-    }
-
-:<< "NOTES"
-    {
-        echo -e "\n 🧐 Checking for PPA wipeout... \n"
-        checkapt "$CHROOT_DIR/etc/apt"
-
-        # 还原
-        echo -e "\n⏪ Restoring from $CHROOT_DIR/${APT_BACKUP_PHYSICAL}\n"
-        rm -rf "$CHROOT_DIR/etc/apt/"* || true
-        cp -a "$CHROOT_DIR/${APT_BACKUP_PHYSICAL}/." "$CHROOT_DIR/etc/apt/" || true
-        ls -lh "$CHROOT_DIR/etc/apt/" || true
-
-        # 最终确认
-        echo -e "\n 🧐 Checking for substituted  PPA ... \n"
-        checkapt "$CHROOT_DIR/etc/apt"
-    }
-NOTES
-
-:<< "NOTES"
-    {
-        mount -l
-        # 1. 查出身：看看它是哪种文件系统挂载的
-        mount | grep "${BUILD_DIR}" || echo "BUILD_DIR is not a direct mount point (maybe part of rootfs)."
-
-        # 2. 查深度：看看 chroot 目录下是否有隐藏的挂载（最危险的情况）
-        echo "Checking for hidden mounts inside chroot..."
-        mount | grep "$CHROOT_DIR" || echo "No sub-mounts detected in chroot."
-
-        # 3. 查文件系统类型
-        df -T "${BUILD_DIR}"
-
-        # 4. 查 OverlayFS (这是内鬼常去的地方)
-        if mount | grep -q "overlay"; then
-            echo "⚠️ ALERT: OverlayFS detected! This might explain the 'sync' delay or missing files in tar."
-        fi
-
-        echo "--- Is chroot itself a mount? ---"
-        mountpoint "$CHROOT_DIR" || echo "chroot is a regular directory (not a mountpoint)."
-
-        # 3. 检查文件系统指纹
-        echo "--- File System Type for chroot: ---"
-        df -hT "$CHROOT_DIR"
-
-        # 4. 查 inode 和设备号 (对比 /etc/apt 与备份目录)
-        echo "--- Inode and Device Audit: ---"
-        stat "$CHROOT_DIR/etc/apt"
-        stat "$CHROOT_DIR/${APT_BACKUP_PHYSICAL}"
-    }
-NOTES
-
-    echo "📦 Packaging rootfs (Release: ${RELEASE_VERSION}, Flavor: ${FLAVOR})..."
-
-    FINAL_TAR_PATH="${BUILD_DIR}/ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.rootfs.tar.xz"
-
-#    sync
-
-:<< "NOTES"
-    {
-     echo "🎣 正在投放多级熵值诱饵..."
-
-     # 诱饵 A：放在根目录（检测整个 chroot 是否被还原）
-     sudo dd if=/dev/urandom of="${CHROOT_DIR}/GLOBAL_TRAP.raw" bs=1M count=2048 status=none
-
-     # 诱饵 B：放在 etc 目录（检测系统配置层是否被还原）
-     sudo dd if=/dev/urandom of="${CHROOT_DIR}/etc/CONFIG_TRAP.raw" bs=1M count=1024 status=none
-
-     # 诱饵 C：放在 apt 目录（检测是否只有 apt 目录被针对性清理）
-     sudo dd if=/dev/urandom of="${CHROOT_DIR}/etc/apt/APT_SPECIFIC_TRAP.raw" bs=1M count=512 status=none
-
-     echo "🧐 投放后物理确认:"
-     sudo ls -lh "${CHROOT_DIR}/GLOBAL_TRAP.raw"
-     sudo ls -lh "${CHROOT_DIR}/etc/CONFIG_TRAP.raw"
-     sudo ls -lh "${CHROOT_DIR}/etc/apt/APT_SPECIFIC_TRAP.raw"
-     sudo sync
-    }
-NOTES
-    
-    tar -cJf "${FINAL_TAR_PATH}" \
-        -p -C "$CHROOT_DIR" . \
-        --sort=name \
-        --xattrs
-
-    TMP_CHROOT="./image"
-    ls -l "${FINAL_TAR_PATH}"
-    mkdir -p "$TMP_CHROOT"
-    tar -xpI 'xz -d -T0' -f "${FINAL_TAR_PATH}" -C "${TMP_CHROOT}"
-
-    {
-        echo "list directory for ${FINAL_TAR_PATH}"
-        ls -lh "${FINAL_TAR_PATH}"
-
-        echo -e "\n------ 🧐 Checking for PPA exist ------ \n"
-        checkapt "${TMP_CHROOT}/etc/apt"
-        
-:<< "NOTES"
-        echo -e "\n------ 🧐 Checking for PPA backup ${APT_BACKUP_PHYSICAL} ------ \n"
-        checkapt "${TMP_CHROOT}/${APT_BACKUP_PHYSICAL}"
-NOTES
-
-    }
-    set +x
-}
-
-# Verify artifact
-echo -e "\n🔍 Verify artifact:"
-ls -lh ${FINAL_TAR_PATH} && echo "🎉 Build successful! Artifact path: ${FINAL_TAR_PATH}"
         
 # Host verification
 if [ -f "${FINAL_TAR_PATH}" ]; then
