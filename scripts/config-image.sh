@@ -142,20 +142,15 @@ tar -xpI 'xz -d -T0' -f "ubuntu-${RELEASE_VERSION}-preinstalled-${FLAVOR}-arm64.
       cat "$path/sources.list.d/"* || true
   }
 
-  checkapt "$chroot_dir/.apt_shadow_backup"
   checkapt "$chroot_dir/etc/apt"
 }
 
 setup_mountpoint $chroot_dir
 
 type configure_apt_sources &> /dev/null && "$_" "$chroot_dir" "${SUITE}"
-#configure_apt_sources "$chroot_dir" "${SUITE}"
 
 chroot $chroot_dir apt-get update
 chroot $chroot_dir apt-get upgrade -y
-
-#chroot $chroot_dir apt-get dist-upgrade -y
-#chroot $chroot_dir apt-get install -y --no-install-recommends software-properties-common ca-certificates gnupg2
 
 if [[ ${LAUNCHPAD} == "Y" ]]; then
     chroot ${chroot_dir} apt-get -y install "u-boot-${BOARD}"
@@ -204,34 +199,7 @@ else
         base_name=$(echo "$deb" | sed 's/_.*//')
         chroot "${chroot_dir}" apt-mark hold "${base_name}"
     done
-
-: <<'NOTES'
-    # Determine installed kernel version for hooks
-    kernel_versions=()
-    for deb in "${kernel_debs[@]}"; do
-        if [[ "$deb" == linux-image-* ]]; then
-            version=${deb#linux-image-}
-            version=${version%%_*}
-            kernel_versions+=("${version}")
-        fi
-    done
-    if [[ ${#kernel_versions[@]} -gt 0 ]]; then
-        mapfile -t sorted_kernel_versions < <(printf '%s\n' "${kernel_versions[@]}" | sort -V)
-        target_kernel_version="${sorted_kernel_versions[$(( ${#sorted_kernel_versions[@]} - 1 ))]}"
-        export TARGET_KERNEL_VERSION="${target_kernel_version}"
-    fi
-NOTES
-
 fi
-
-: <<'NOTES'
-if [[ -z "${TARGET_KERNEL_VERSION}" ]]; then
-    target_kernel_version=$(chroot "${chroot_dir}" bash -c "ls /lib/modules | grep rockchip | sort -V | tail -n1" || true)
-    if [[ -n "${target_kernel_version}" ]]; then
-        export TARGET_KERNEL_VERSION="${target_kernel_version}"
-    fi
-fi
-NOTES
 
 if [[ $(type -t config_image_hook__"${BOARD}") == function ]]; then
     config_image_hook__"${BOARD}" "${chroot_dir}" "${overlay_dir}" "${SUITE}"
