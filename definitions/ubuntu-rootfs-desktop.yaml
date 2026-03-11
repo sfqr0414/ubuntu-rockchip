@@ -36,6 +36,7 @@ customization:
     - name: oem-config-slideshow-ubuntu
     - name: ubiquity-slideshow-ubuntu
     - name: squashfs-tools
+    - name: systemd-growfs
     - name: snapd
   extra-snaps:
     - name: bare
