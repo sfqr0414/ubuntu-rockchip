@@ -29,11 +29,10 @@ customization:
     execute:
       - path: /tweaks.sh
   extra-packages:
-    - name: "u-boot-tools"
-    - name: "u-boot-menu"
-    - name: "initramfs-tools"
-    - name: "squashfs-tools"
-    - name: "snapd"
+    - name: initramfs-tools
+    - name: squashfs-tools
+    - name: systemd-growfs
+    - name: snapd
   extra-snaps:
     - name: lxd
     - name: core
