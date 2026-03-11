@@ -38,7 +38,7 @@ host_call() {
 # Fix environment and permissions
 {
     host_call "rm -rf /etc/resolv.conf"
-    host_call "nameserver 8.8.8.8" > /etc/resolv.conf"
+    host_call 'echo "nameserver 8.8.8.8" > /etc/resolv.conf'
 }
 
 # Boot and Kernel configurations
