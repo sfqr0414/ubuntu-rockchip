@@ -2,7 +2,7 @@ name: ubuntu-rootfs
 display-name: Ubuntu rootfs ARM64 (Desktop)
 revision: 2
 architecture: arm64
-series: placeholder
+series: suite?
 class: preinstalled
 kernel: linux-generic
 rootfs:
@@ -17,16 +17,11 @@ rootfs:
   seed:
     urls:
       - "https://git.launchpad.net/~ubuntu-core-dev/ubuntu-seeds/+git/"
-    branch: placeholder
+    branch: suite?
     names:
-      - desktop-minimal
+      - standard
 customization:
   pocket: updates
-  cloud-init:
-    user-data: |
-      #cloud-config
-      oem-config:
-        enabled: true
   manual:
     copy-file:
       - source: tweaks.sh
@@ -36,9 +31,8 @@ customization:
   extra-packages:
     - name: "u-boot-menu"
     - name: "initramfs-tools"
-    - name: "ubuntu-desktop-minimal"
+    - name: "ubuntu-desktop"
     - name: "oem-config-gtk"
-    - name: "cloud-init"
     - name: "squashfs-tools"
     - name: "snapd"
   extra-snaps:
