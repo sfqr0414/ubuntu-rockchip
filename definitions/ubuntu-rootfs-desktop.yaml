@@ -29,21 +29,19 @@ customization:
     execute:
       - path: /tweaks.sh
   extra-packages:
-    - name: "u-boot-menu"
-    - name: "initramfs-tools"
-    - name: "ubuntu-desktop"
-    - name: "oem-config-gtk"
-    - name: "squashfs-tools"
-    - name: "snapd"
+    - name: ubuntu-desktop
+    - name: oem-config-gtk
+    - name: oem-config
+    - name: ubiquity-frontend-gtk
+    - name: oem-config-slideshow-ubuntu
+    - name: ubiquity-slideshow-ubuntu
+    - name: squashfs-tools
+    - name: snapd
   extra-snaps:
-#    - name: snapd
     - name: bare
     - name: core
     - name: core22
     - name: core24
-#    - name: firefox
-#    - name: gnome-42-2204
-#    - name: gtk-common-themes
 # 提醒：如需自动生成镜像文件，请取消以下注释
 # artifacts:
 #   rootfs-tarball:
