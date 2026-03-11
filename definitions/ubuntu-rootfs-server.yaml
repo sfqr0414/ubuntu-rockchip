@@ -2,7 +2,7 @@ name: ubuntu-rootfs
 display-name: Ubuntu rootfs ARM64 (Server)
 revision: 2
 architecture: arm64
-series: placeholder
+series: suite?
 class: preinstalled
 kernel: linux-generic
 rootfs:
@@ -17,19 +17,11 @@ rootfs:
   seed:
     urls:
       - "https://git.launchpad.net/~ubuntu-core-dev/ubuntu-seeds/+git/"
-    branch: placeholder
+    branch: suite?
     names:
-      - server-minimal
+      - minimal
 customization:
   pocket: updates
-  cloud-init:
-    user-data: |
-      #cloud-config
-      subiquity:
-        install: {}
-      users:
-        - name: ubuntu
-          sudo: ALL=(ALL) NOPASSWD:ALL
   manual:
     copy-file:
       - source: tweaks.sh
@@ -40,7 +32,6 @@ customization:
     - name: "u-boot-tools"
     - name: "u-boot-menu"
     - name: "initramfs-tools"
-    - name: "cloud-init"
     - name: "squashfs-tools"
     - name: "snapd"
   extra-snaps:
