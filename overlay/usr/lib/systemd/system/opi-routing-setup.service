@@ -1,0 +1,13 @@
+[Unit]
+Description=Orange Pi Routing Config Auto-Create
+After=network.target
+ConditionPathExists=!/etc/sysctl.d/99-opi-routing.conf
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/bin/bash -c 'CONFIG_FILE="/etc/sysctl.d/99-opi-routing.conf"; WLAN=$(for i in /sys/class/net/*; do [ -d "$i/wireless" ] && basename $i; done | head -1); ETH=$(for i in /sys/class/net/*; do n=$(basename $i); [ "$n" != lo ] && [ "$n" != "$WLAN" ] && [ -d "$i/device" ] && echo $n; done | head -1); echo -e "net.ipv4.conf.all.arp_filter = 1\nnet.ipv4.conf.default.arp_filter = 1\nnet.ipv4.conf.$ETH.arp_filter = 1\nnet.ipv4.conf.$WLAN.arp_filter = 1\nnet.ipv4.conf.all.rp_filter = 1\nnet.ipv4.conf.default.rp_filter = 1\nnet.ipv4.conf.$ETH.rp_filter = 1\nnet.ipv4.conf.$WLAN.rp_filter = 1" > $CONFIG_FILE; sysctl --system > /dev/null'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
