@@ -86,5 +86,7 @@ NOTES
             chroot "${rootfs}" apt install -y "/tmp/${file}" || true
         done
     fi
+    cp "${overlay}/usr/lib/systemd/system/opi-routing-setup.service" "${rootfs}/usr/lib/systemd/system/opi-routing-setup.service"
+    chroot "${rootfs}" systemctl enable opi-routing-setup.service
     return 0
 }
