@@ -81,27 +81,37 @@ EOF
 IFACE=$1
 ACTION=$2
 [ "$ACTION" != "up" ] && exit 0
+
 IP4=$(ip -4 addr show "$IFACE" scope global | awk '/inet / {print $2}' | cut -d/ -f1 | head -n 1)
 [ -z "$IP4" ] && exit 0
-TYPE=$(nmcli -t -f GENERAL.TYPE device show "$IFACE" 2>/dev/null | cut -d: -f2)
+
+TYPE=$(nmcli -t -f GENERAL.TYPE device show "$IFACE" | cut -d: -f2)
 [ "$TYPE" == "ethernet" ] && { TABLE=100; PRIO=30000; }
 [ "$TYPE" == "wifi" ] && { TABLE=200; PRIO=30001; }
 [ -z "$TABLE" ] && exit 0
+
 LOCAL_SUBNET=$(ip -4 route show dev "$IFACE" | grep "/" | grep -v "default" | awk '{print $1}' | head -n 1)
 if [ -n "$LOCAL_SUBNET" ]; then
     ip rule del to "$LOCAL_SUBNET" lookup main priority 29999 2>/dev/null
     ip rule add to "$LOCAL_SUBNET" lookup main priority 29999
 fi
+
 GW4=$(ip -4 route show dev "$IFACE" | awk '/default via / {print $3}' | head -n 1)
 if [ -n "$IP4" ] && [ -n "$GW4" ]; then
     ip rule del priority $PRIO 2>/dev/null
     ip rule add from "$IP4" table "$TABLE" priority $PRIO
+    ip rule add iif "$IFACE" table "$TABLE" priority $PRIO
+    ip route replace "$LOCAL_SUBNET" dev "$IFACE" scope link table "$TABLE"
     ip route replace default via "$GW4" dev "$IFACE" table "$TABLE"
 fi
+
 IP6s=$(ip -6 addr show "$IFACE" scope global | awk '/inet6 / {print $2}' | cut -d/ -f1 | grep -v '^fe80')
 GW6=$(ip -6 route show dev "$IFACE" | awk '/default via / {print $3}' | head -n 1)
+LOCAL_SUBNET6=$(ip -6 route show dev "$IFACE" | grep "/" | grep -v "default" | grep -v "fe80" | awk '{print $1}' | head -n 1)
 if [ -n "$IP6s" ] && [ -n "$GW6" ]; then
     ip -6 rule del priority $PRIO 2>/dev/null
+    ip -6 rule add iif "$IFACE" table "$TABLE" priority $PRIO
+    [ -n "$LOCAL_SUBNET6" ] && ip -6 route replace "$LOCAL_SUBNET6" dev "$IFACE" table "$TABLE"
     for IP6 in $IP6s; do ip -6 rule add from "$IP6" table "$TABLE" priority $PRIO; done
     ip -6 route replace default via "$GW6" dev "$IFACE" table "$TABLE"
 fi
